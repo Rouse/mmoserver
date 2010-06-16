@@ -31,7 +31,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "QuadTree.h"
 #include "WorldManager.h"
 #include "ZoneTree.h"
-
+#include "utils/rand.h"
+#include "LairObject.h"
+#include "NpcManager.h"
 //=============================================================================
 
 SpawnRegion::SpawnRegion()
@@ -113,8 +115,72 @@ void SpawnRegion::update()
 void SpawnRegion::spawnArea()
 {
 	SpawnLairList::iterator it = spawnData->lairTypeList.begin();
+	uint32 sDensity = spawnData->density;
+	if(sDensity < 5)
+		sDensity = 5;
+
+	sDensity = sDensity*sDensity;
+
+	uint32 density = (uint32)(this->mWidth * this->mHeight)/(sDensity);
+
+	density /= spawnData->lairTypeList.size();
 	while(it != spawnData->lairTypeList.end())
 	{
+		for(int i; i < density; i++)
+		{
+			glm::vec3 spawnPoint = getSpawnLocation();
+			if((spawnPoint.x != 0) && (spawnPoint.z != 0))
+			{
+				gNpcManager->spawnLairs((*it).lairId,this->getId());
+			}
+		}
+		it++;
+	}
+	
+}
+
+bool SpawnRegion::checkSpawnLocation(glm::vec3 location)
+{
+	LairObjectList::iterator it = mLairObjectList.begin();
+	while(it != mLairObjectList.end())
+	{
+		float distanceFromLair = glm::distance((*it)->mPosition, location);
+		
+		if(distanceFromLair > (float) spawnData->density)
+			return false;
+
+		it++;
+	}
+
+	return true;
+
+}
+
+glm::vec3 SpawnRegion::getSpawnLocation()
+{
+	glm::vec3 spawnPoint;
+	bool found = false;
+	uint32 iteration = 0;
+	while(!found)
+	{
+		iteration++;
+		spawnPoint.x = this->mPosition.x + (gRandom->getRand()% ((uint32)this->getWidth()));
+		spawnPoint.z = this->mPosition.z + (gRandom->getRand()% ((uint32)this->getHeight()));
+
+		//now check already present lairs
+		if(checkSpawnLocation(spawnPoint))
+		{
+			return(spawnPoint);
+			found = true;
+		}
+		
+		if(iteration>1000)
+		{
+			spawnPoint.x = 0;
+			spawnPoint.z = 0;
+			return(spawnPoint);
+
+		}
 	}
 	
 }

@@ -32,6 +32,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "NpcManager.h"
 #include "PlayerObject.h"
 #include "QuadTree.h"
+#include "SpawnRegion.h"
 #include "WorldManager.h"
 #include "ZoneTree.h"
 #include "MessageLib/MessageLib.h"
@@ -58,6 +59,7 @@ LairObject::LairObject(uint64 templateId) : AttackableStaticNpc()
 , mSpawned(false)
 , mSpawnPositionFixed(true)
 {
+	mSpawnRegion = 0;
 	mNpcFamily	= NpcFamily_NaturalLairs;
 	mType = ObjType_Lair;
 
@@ -568,7 +570,7 @@ void LairObject::killEvent(void)
 		if (npcNewId != 0)
 		{
 			// Let's put this sucker into play again.
-			NonPersistentNpcFactory::Instance()->requestLairObject(NpcManager::Instance(), mLairsTypeId, npcNewId);
+			NonPersistentNpcFactory::Instance()->requestLairObject(NpcManager::Instance(), mLairsTypeId, npcNewId,mSpawnRegion);
 		}
 	}
 }
@@ -604,21 +606,16 @@ void LairObject::respawn(void)
 		}
 		else
 		{
-			// Rectangle(float lowX,float lowZ,float width,float height) : Shape(lowX,0.0f,lowZ),mWidth(width),mHeight(height){}
-            const glm::vec3& position = this->mSpawnArea.getPosition();
+			SpawnRegion* spawnRegion = dynamic_cast<SpawnRegion*>(gWorldManager->getObjectById(this->mSpawnRegion));
 
-			float xWidth = this->mSpawnArea.getHeight();
-			float zHeight = this->mSpawnArea.getWidth();
-
-			// Ge a random position withing given region.
-			// Note that creature can spawn outside the region, since thay have a radius from the lair where thet are allowed to spawn.
-			this->mPosition.x = position.x + (gRandom->getRand() % (int32)(xWidth+1));
-			this->mPosition.z = position.z + (gRandom->getRand() % (int32)(zHeight+1));
-			if (this->getParentId() == 0)
+			if(spawnRegion)
 			{
-				// Heightmap only works outside.
+				this->mPosition = spawnRegion->getSpawnLocation();
+				
 				this->mPosition.y = this->getHeightAt2DPosition(this->mPosition.x, this->mPosition.z, true);
 			}
+
+
 
 			// Random direction.
 			this->setRandomDirection();
@@ -816,9 +813,9 @@ void LairObject::reportedDead(uint64 deadCreatureId)
 }
 
 
-void LairObject::setSpawnArea(const Anh_Math::Rectangle &mSpawnArea)
+void LairObject::setSpawnArea(uint64 SpawnAreaId)
 {
-	this->mSpawnArea = mSpawnArea;
+	mSpawnRegion = SpawnAreaId;
 }
 
 void LairObject::setCreatureTemplate(uint32 index, uint64 creatureTemplateId)

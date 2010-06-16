@@ -34,6 +34,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "NPCObject.h"
 #include "ObjectFactoryCallback.h"
 #include "QuestGiver.h"
+#include "SpawnRegion.h"
 #include "Trainer.h"
 #include "Weapon.h"
 #include "WorldConfig.h"
@@ -81,6 +82,7 @@ class QueryNonPersistentNpcFactory
 		uint64					mTemplateId;
 		uint64					mId;
 		uint64					mSpawnCellId;
+		uint64					mSpawnRegionId;
         glm::vec3		mSpawnPosition; 
         glm::quat	mSpawnDirection;
 		uint64					mRespawnDelay;
@@ -231,10 +233,9 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 			npc->mDirection.w = lair.mSpawnDirW;
 
 			// Let's get the spawn area.
-			//const Anh_Math::Rectangle spawnArea = gWorldManager->getSpawnArea(lair.mCreatureSpwanRegion);
+			SpawnRegion* spawnRegion = dynamic_cast<SpawnRegion*>(gWorldManager->getObjectById(asyncContainer->mSpawnRegionId));
 
-			// lair.mCreatureSpwanRegion
-			//npc->setSpawnArea(spawnArea); 
+			npc->mSpawnRegion = spawnRegion->getId(); 
 
 			result->ResetRowIndex();
 			result->GetNextRow(lairSpawnNpcBinding,(void*)npc );
@@ -621,10 +622,11 @@ void NonPersistentNpcFactory::_destroyDatabindings()
 //	Upgrade version for use of the correct DB.
 //
 //=============================================================================
-void NonPersistentNpcFactory::requestLairObject(ObjectFactoryCallback* ofCallback, uint64 lairsId, uint64 npcNewId)
+void NonPersistentNpcFactory::requestLairObject(ObjectFactoryCallback* ofCallback, uint64 lairsId, uint64 npcNewId, uint64 spawnRegion)
 {
 	QueryNonPersistentNpcFactory* asynccontainer = new QueryNonPersistentNpcFactory(ofCallback, NonPersistentNpcQuery_LairTemplate, lairsId, npcNewId);
 
+	asynccontainer->mSpawnRegionId = spawnRegion;
 	mDatabase->ExecuteSqlAsync(this,asynccontainer,
 								"SELECT lairs.spawn_group_id, lairs.lair_template, lairs.creature_group "
 								"lairs.family, lair_templates.lair_object_string, lair_templates.stf_name, lair_templates.stf_file, "

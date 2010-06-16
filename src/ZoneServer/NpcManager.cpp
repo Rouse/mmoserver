@@ -212,14 +212,14 @@ void NpcManager::handleObjectReady(Object* object)
 }
 */
 
-void NpcManager::spawnLairs(uint32 lairId)
+void NpcManager::spawnLairs(uint32 lairId, uint64 spawnregion)
 {
 	uint64 npcNewId = gWorldManager->getRandomNpNpcIdSequence();
 
 	if (npcNewId != 0)
 	{
 		NonPersistentNpcFactory* nonPersistentNpcFactory = NonPersistentNpcFactory::Instance();
-		nonPersistentNpcFactory->requestLairObject(this, lairId, npcNewId);
+		nonPersistentNpcFactory->requestLairObject(this, lairId, npcNewId,spawnregion);
 	}
 }
 
@@ -254,7 +254,7 @@ void NpcManager::handleDatabaseJobComplete(void* ref, DatabaseResult* result)
 
 					if (npcNewId != 0)
 					{
-						nonPersistentNpcFactory->requestLairObject(this, lair.mLairsId, npcNewId);
+						nonPersistentNpcFactory->requestLairObject(this, lair.mLairsId, npcNewId,0);
 					}
 				}
 			}

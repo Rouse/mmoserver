@@ -28,10 +28,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "SpawnManager.h"
 #include "SpawnRegion.h"
 #include "AttackableCreature.h"
-#include "CombatManager.h"
 #include "CreatureObject.h"
 #include "PlayerObject.h"
-#include "Weapon.h"
 #include "WorldConfig.h"
 #include "WorldManager.h"
 #include "ZoneServer/NonPersistentNpcFactory.h"
@@ -79,7 +77,7 @@ SpawnManager* SpawnManager::Instance(void)
 }
 
 
-// This constructor prevents the default constructor to be used, as long as the constructor is keept private.
+// This constructor prevents the default constructor to be used, as long as the constructor is kept private.
 
 SpawnManager::SpawnManager()
 {
@@ -91,7 +89,7 @@ SpawnManager::SpawnManager()
 SpawnManager::SpawnManager(Database* database) :mDatabase(database)
 {
 	// _setupDatabindings();
-	this->loadLairs();
+	this->loadSpawns();
 }
 
 
@@ -127,17 +125,6 @@ void SpawnManager::handleObjectReady(Object* object)
 // This part is where the natural lairs are loaded from DB.
 //
 //=============================================================================================================================
-void SpawnManager::loadLairs(void)
-{
-	//load lair and creature spawn, and optionally heightmaps cache.
-	// NpcFamily_NaturalLairs
-
-	mDatabase->ExecuteSqlAsync(this,new SpawnAsyncContainer(SpawnQuery_Lairs),
-								"SELECT lairs.id, lairs.lair_template, lairs.count "
-								"FROM lairs "
-								"INNER JOIN spawns ON (lairs.creature_spawn_region = spawns.id) "
-								"WHERE spawns.spawn_planet=%u AND lairs.family=%u ORDER BY lairs.id;",gWorldManager->getZoneId(), NpcFamily_NaturalLairs);
-}
 
 //
 void SpawnManager::loadSpawns(void)
@@ -207,6 +194,8 @@ void SpawnManager::handleDatabaseJobComplete(void* ref, DatabaseResult* result)
 				spawnRegion->setHeight((float)(*spawnIt).second.height);
 
 				spawnRegion->spawnData = &(*spawnIt).second;
+
+				gWorldManager->addObject(spawnRegion);
 
 			}
 			else

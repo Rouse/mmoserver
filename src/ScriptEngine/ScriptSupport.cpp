@@ -899,6 +899,6 @@ void ScriptSupport::lairSpawn(uint64 lairTypeId)
 	if (npcNewId != 0)
 	{
 		// Let's put this sucker into play again.
-		NonPersistentNpcFactory::Instance()->requestLairObject(NpcManager::Instance(), lairTypeId, npcNewId);
+		NonPersistentNpcFactory::Instance()->requestLairObject(NpcManager::Instance(), lairTypeId, npcNewId,0);
 	}
 }

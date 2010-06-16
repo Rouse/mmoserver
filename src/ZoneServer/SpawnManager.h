@@ -136,7 +136,6 @@ class SpawnManager  : public ObjectFactoryCallback, public DatabaseCallback
 
 		//uint64	handleNpc(NPCObject* npc, uint64 timeOverdue);
 
-		void	loadLairs(void);
 		void	loadSpawns(void);
 		void	loadSpawnGroup(uint32 spawn);
 

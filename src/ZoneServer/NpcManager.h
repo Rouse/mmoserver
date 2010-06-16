@@ -42,6 +42,8 @@ class NPCObject;
 class SpawnData;
 class Weapon;
 
+#define	 gNpcManager	NpcManager::Instance()
+
 //======================================================================================================================
 //
 // Container for asyncronous database queries
@@ -89,7 +91,7 @@ class NpcManager  : public ObjectFactoryCallback, public DatabaseCallback
 		uint64	handleNpc(NPCObject* npc, uint64 timeOverdue);
 
 		//void	loadLairs(void);
-		void spawnLairs(uint32 lairId);
+		void spawnLairs(uint32 lairId, uint64 spawnregion);
 
 
 	protected:

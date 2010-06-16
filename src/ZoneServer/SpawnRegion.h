@@ -36,8 +36,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 //=============================================================================
 
 class ZoneTree;
+class LairObject;
 class PlayerObject;
 class QTRegion;
+
+typedef std::list<LairObject*>				LairObjectList;
 
 //=============================================================================
 
@@ -55,12 +58,15 @@ class SpawnRegion : public RegionObject
 		void				setSpawnType(uint32 type){ mSpawnType = type; }
 		bool				isMission(){return (mMission != 0);}
 
+		void				addLair(LairObject* lair){mLairObjectList.push_back(lair);};
+
 		virtual void		update();
 		virtual void		onObjectEnter(Object* object);
 		virtual void		onObjectLeave(Object* object);
 
 		void				spawnArea();
-
+		glm::vec3			getSpawnLocation();
+		bool				checkSpawnLocation(glm::vec3 location);
 
 		SpawnDataStruct*	spawnData;
 	protected:
@@ -74,6 +80,8 @@ class SpawnRegion : public RegionObject
 		//activity
 		bool				mSpawnActivity;
 		uint64				mInactivityTimer;
+
+		LairObjectList		mLairObjectList;
 };
 
 
