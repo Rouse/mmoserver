@@ -92,11 +92,6 @@ enum GalaxyBankAccount
 	Account_NewPlayerQuests				=	33,
 	Account_ContrabandScanningFines		=	34,
 	Account_Bank						=	35
-<<<<<<< HEAD
-	
-};
-=======
->>>>>>> Feature_BankDepositbox
 
 };
 enum TREMQueryType
@@ -104,13 +99,8 @@ enum TREMQueryType
 	TREMQuery_NULL							=	0,
 	TREMQuery_BankTipgetId					=	1,
 	TREMQuery_BankTipTransaction			=	2,
-<<<<<<< HEAD
-	TREMQuery_BankTipUpdateGalaxyAccount	=	3
-=======
 	TREMQuery_BankTipUpdateGalaxyAccount	=	3,
 	TREMQuery_BankDepositBox				=	4
->>>>>>> Feature_BankDepositbox
-
 };
 //======================================================================================================================
 class TreasuryManagerAsyncContainer

@@ -31,6 +31,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "TangibleObject.h"
 #include <vector>
 
+typedef std::vector<std::pair<string,uint64> >	SortedBankItemList;
+
 class PlayerObject;
 
 //=============================================================================
@@ -65,6 +67,7 @@ class Bank : public TangibleObject
 		int32			mCredits;
 		uint8			mMaxSlots;
 		int8			mPlanet;
+		uint32			mObjectLoadCounter;
 };
 
 //=============================================================================

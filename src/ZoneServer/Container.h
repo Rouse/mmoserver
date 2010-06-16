@@ -44,8 +44,8 @@ class Container : public TangibleObject
 		Container();
 		~Container();
 
-		CreatureObject* getParent(){ return mParent; }
-		void		setParent(CreatureObject* creature){ mParent = creature; }
+		Object* getParent(){ return mParent; }
+		void		setParent(Object* object){ mParent = object; }
 		uint32		getObjectLoadCounter(){ return mObjectLoadCounter; }
 		void		setObjectLoadCounter(uint32 count){ mObjectLoadCounter = count; }
 
@@ -57,7 +57,7 @@ class Container : public TangibleObject
 
 	private:
 		uint32				mObjectLoadCounter;
-		CreatureObject*		mParent;
+		Object*				mParent;
 		ObjectList			mObjects;
 };
 

@@ -40,6 +40,7 @@ mPlanet(-1)
 {
 	mTanGroup	= TanGroup_PlayerInternal;
 	mTanType	= TanType_Bank;
+	mObjectLoadCounter = 1000;
 }
 
 //=============================================================================

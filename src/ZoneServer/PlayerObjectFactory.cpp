@@ -442,10 +442,10 @@ void PlayerObjectFactory::handleDatabaseJobComplete(void* ref,DatabaseResult* re
 		}
 		case POFQuery_Banks:
 		{
-			DataBinding* binding = mDatabase->CreateDataBinding(1);
-			binding->addField(DFT_uint64,0,8);
 			Type1_QueryContainer queryContainer;
-
+			DataBinding* binding = mDatabase->CreateDataBinding(1);
+			binding->addField(DFT_uint64,offsetof(Type1_QueryContainer,mId),8,0);
+			
 			uint64 count = result->getRowCount();
 			if (asyncContainer->mId == NULL)
 				break;
@@ -824,6 +824,13 @@ void PlayerObjectFactory::_destroyDatabindings()
 void PlayerObjectFactory::handleObjectReady(Object* object,DispatchClient* client)
 {
 	mIlc = _getObject(object->getParentId());
+	bool isBankItem = false;
+	Bank* bank = dynamic_cast<Bank*>(mIlc->mObject);
+
+	if(bank)
+	{
+		isBankItem = true;
+	}
 	if(!mIlc)
 	{
 		gLogger->log(LogManager::DEBUG,"no mIlc :(");
@@ -833,7 +840,6 @@ void PlayerObjectFactory::handleObjectReady(Object* object,DispatchClient* clien
 
 	PlayerObject*		playerObject = dynamic_cast<PlayerObject*>(mIlc->mObject);
 	//TangibleObject*		tangibleObject = dynamic_cast<TangibleObject*>(object);
-
 
 	if(Inventory* inventory = dynamic_cast<Inventory*>(object))
 	{
@@ -850,6 +856,19 @@ void PlayerObjectFactory::handleObjectReady(Object* object,DispatchClient* clien
 
 	}
 	else
+	if (Bank* bank	= dynamic_cast<Bank*>(object))
+	{
+		bank->setEquipSlotMask(CreatureEquipSlot_Bank);
+
+		playerObject->mEquipManager.addEquippedObject(CreatureEquipSlot_Bank,bank);
+		bank->setParent(playerObject);
+
+		QueryContainerBase* asContainer = new(mQueryContainerPool.ordered_malloc()) QueryContainerBase(0,POFQuery_EquippedItems,client);
+		asContainer->mObject = bank;
+
+		mDatabase->ExecuteSqlAsync(this,asContainer,"SELECT id  FROM items WHERE parent_id=%"PRIu64"",bank->getId());
+	}
+	else
 	if(Datapad* datapad = dynamic_cast<Datapad*>(object))
 	{
 		datapad->setEquipSlotMask(CreatureEquipSlot_Datapad);
@@ -862,39 +881,59 @@ void PlayerObjectFactory::handleObjectReady(Object* object,DispatchClient* clien
 	else
 	if(TangibleObject* item =  dynamic_cast<TangibleObject*>(object))
 	{
-		gWorldManager->addObject(item,true);
-
-		playerObject->mEquipManager.addEquippedObject(item);
+		//bank can't equip the items
+		//because the mIlc grabs the parent object, ie: bank, we have to get the playerId
+		if (!isBankItem)
+		{
+			gWorldManager->addObject(item,true);
+			playerObject->mEquipManager.addEquippedObject(item);
+		}
+		else
+		{
+			item->setParentId(mIlc->mObject->getId());
+			gWorldManager->addObject(item, true);
+		}
 	}
 	else
 	{
 		gLogger->log(LogManager::DEBUG,"PlayerObjectFactory: no idea what this was");
 	}
-
 	if(!mIlc->mLoadCounter)
 	{
-		if(!(_removeFromObjectLoadMap(playerObject->getId())))
-			gLogger->log(LogManager::DEBUG,"PlayerObjectFactory: Failed removing object from loadmap");
-
-		// if weapon slot is empty, equip the unarmed default weapon
-		if(!playerObject->mEquipManager.getEquippedObject(CreatureEquipSlot_Hold_Left))
+		if (isBankItem)
 		{
-			// gLogger->log(LogManager::DEBUG,"equip default weapon");
-			playerObject->mEquipManager.equipDefaultWeapon();
+			if(!(_removeFromObjectLoadMap(bank->getId())))
+				gLogger->log(LogManager::DEBUG,"PlayerObjectFactory: Failed removing object from loadmap");
 		}
-		Datapad* dpad = playerObject->getDataPad();
-		if(!dpad)
+		else
 		{
-			assert(dpad && "PlayerObjectFactory::No Datapad!!!!!");
-			return;
+			if(!(_removeFromObjectLoadMap(playerObject->getId())))
+				gLogger->log(LogManager::DEBUG,"PlayerObjectFactory: Failed removing object from loadmap");
+			// if weapon slot is empty, equip the unarmed default weapon
+			if(!playerObject->mEquipManager.getEquippedObject(CreatureEquipSlot_Hold_Left))
+			{
+				// gLogger->log(LogManager::DEBUG,"equip default weapon");
+				playerObject->mEquipManager.equipDefaultWeapon();
+			}
+			Datapad* dpad = playerObject->getDataPad();
+			if(!dpad)
+			{
+				assert(dpad && "PlayerObjectFactory::No Datapad!!!!!");
+				return;
 			
+			}
+
+			// init equip counter
+			if ((mIlc->mObject->getId()-BANK_OFFSET) == object->getParentId())
+			{
+				playerObject->mEquipManager.setEquippedObjectsUpdateCounter(0);
+			}
 		}
-
-		// init equip counter
-		playerObject->mEquipManager.setEquippedObjectsUpdateCounter(0);
-
-		mIlc->mOfCallback->handleObjectReady(playerObject,mIlc->mClient);
-
+		if (!isBankItem)
+		{
+			mIlc->mOfCallback->handleObjectReady(playerObject,mIlc->mClient);
+		}
+		
 		mILCPool.free(mIlc);
 	}
 	//gBuffManager->InitBuffs(playerObject);

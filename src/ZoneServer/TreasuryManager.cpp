@@ -265,15 +265,17 @@ void TreasuryManager::bankOpenSafetyDepositContainer(PlayerObject* playerObject)
 				gMessageLib->sendSystemMessage(playerObject, L"You are not a member of this bank.");
 				return;
 			}
+			
 			ObjectIDList*			bankObjects = bank->getObjects();
 			ObjectIDList::iterator	listIt		= bankObjects->begin();
-			gMessageLib->sendOpenedContainer(bank->getId(), playerObject);
-			//loop items and send create message for each //test
+			
+			//loop items and send create message for each
 			while (listIt != bankObjects->end())
 			{
 				Item* bankItem = dynamic_cast<Item*>(gWorldManager->getObjectById((*listIt)));
 				gMessageLib->sendCreateObject(bankItem,playerObject,false);
 			}
+			gMessageLib->sendOpenedContainer(bank->getId(), playerObject);
 		}
 	}
 }
@@ -579,11 +581,6 @@ void TreasuryManager::handleDatabaseJobComplete(void* ref,DatabaseResult* result
 
 				sprintf(sql, "CALL sp_GalaxyAccountDepositCredits(%u, %u, %"PRIu64",%u",galaxyId, Account_TipSurcharge, asynContainer->player, asynContainer->surcharge);
 				TreasuryManagerAsyncContainer* asyncContainer = new TreasuryManagerAsyncContainer(TREMQuery_BankTipUpdateGalaxyAccount,0);
-<<<<<<< HEAD
-				
-=======
-
->>>>>>> Feature_BankDepositbox
 				mDatabase->ExecuteProcedureAsync(this,asyncContainer,sql);
 			}
 			else
@@ -596,10 +593,7 @@ void TreasuryManager::handleDatabaseJobComplete(void* ref,DatabaseResult* result
 		case TREMQuery_BankTipUpdateGalaxyAccount:
 		{
 			uint32 error;
-<<<<<<< HEAD
 			DataBinding* binding = mDatabase->CreateDataBinding(1);
-=======
->>>>>>> Feature_BankDepositbox
 			binding->addField(DFT_uint32,0,4);
 			result->GetNextRow(binding,&error);
 
@@ -608,15 +602,12 @@ void TreasuryManager::handleDatabaseJobComplete(void* ref,DatabaseResult* result
 				gLogger->log(LogManager::DEBUG,"TreasuryManager::Account_TipSurcharge: error %u", error);
 			}
 		}
-<<<<<<< HEAD
 		break;
-=======
 		case TREMQuery_BankDepositBox:
 		{
 			/*Bank* bank = dynamic_cast<Bank*>(asynContainer->bank);
 			gMessageLib->sendOpenedContainer(bank->getId(), asynContainer->player);*/
 		}
->>>>>>> Feature_BankDepositbox
 		case TREMQuery_NULL:
 		{
 
