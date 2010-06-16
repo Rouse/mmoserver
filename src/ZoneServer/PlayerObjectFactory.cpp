@@ -311,6 +311,14 @@ void PlayerObjectFactory::handleDatabaseJobComplete(void* ref,DatabaseResult* re
 			LotsContainer->mObject = playerObject;
 
 			mDatabase->ExecuteSqlAsync(this,LotsContainer,"SELECT sf_getLotCount(%I64u)",playerObject->getId());
+
+			QueryContainerBase* banksContainer = new(mQueryContainerPool.ordered_malloc()) QueryContainerBase(asyncContainer->mOfCallback,POFQuery_Banks,asyncContainer->mClient);
+			Bank* bank = dynamic_cast<Bank*>(playerObject->getEquipManager()->getEquippedObject(CreatureEquipSlot_Bank));
+			banksContainer->mObject = bank;
+			banksContainer->mId = bank->getId();
+			banksContainer->mClient = asyncContainer->mClient;
+
+			mDatabase->ExecuteSqlAsync(this,banksContainer,"SELECT id FROM items WHERE parent_id=%"PRIu64"",playerObject->getId()+BANK_OFFSET);
 		}
 		break;
 
@@ -345,7 +353,9 @@ void PlayerObjectFactory::handleDatabaseJobComplete(void* ref,DatabaseResult* re
 			mObjectLoadMap.insert(std::make_pair(playerObject->getId(),ilc));
 
 			// request inventory
-			mInventoryFactory->requestObject(this,playerObject->mId + 1,TanGroup_Inventory,TanType_CharInventory,asyncContainer->mClient);
+			mInventoryFactory->requestObject(this,playerObject->mId + INVENTORY_OFFSET,TanGroup_Inventory,TanType_CharInventory,asyncContainer->mClient);
+			//request bank
+			//mInventoryFactory->requestObject(this, playerObject->mId + BANK_OFFSET, TanGroup_Container, TanType_Bank, asyncContainer->mClient);
 
 		}
 		break;
@@ -428,6 +438,30 @@ void PlayerObjectFactory::handleDatabaseJobComplete(void* ref,DatabaseResult* re
 			playerObject->setLots((uint8)maxLots);
 			gLogger->log(LogManager::DEBUG,"PlayerObjectFactory: %I64u has %u lots remaining",playerObject->getId(),maxLots);
 
+			mDatabase->DestroyDataBinding(binding);
+		}
+		case POFQuery_Banks:
+		{
+			DataBinding* binding = mDatabase->CreateDataBinding(1);
+			binding->addField(DFT_uint64,0,8);
+			Type1_QueryContainer queryContainer;
+
+			uint64 count = result->getRowCount();
+			if (asyncContainer->mId == NULL)
+				break;
+			mObjectLoadMap.insert(std::make_pair(asyncContainer->mId,new(mILCPool.ordered_malloc()) InLoadingContainer(asyncContainer->mObject,asyncContainer->mOfCallback,asyncContainer->mClient,(uint32)count)));
+			//Item* item = dynamic_cast<Item*>(gWorldManager->getObjectById(queryContainer.mId));
+			if (!count)
+			{
+				gLogger->log(LogManager::DEBUG,"PlayerObjectFactory: no items in player's bank");
+				mDatabase->DestroyDataBinding(binding);
+				break;
+			}
+			for(uint64 i = 0;i < count;i++)
+			{
+				result->GetNextRow(binding,&queryContainer);
+				gTangibleFactory->requestObject(this,queryContainer.mId,TanGroup_Item, 0,asyncContainer->mClient);
+			}
 			mDatabase->DestroyDataBinding(binding);
 		}
 		break;
@@ -594,7 +628,7 @@ PlayerObject* PlayerObjectFactory::_createPlayer(DatabaseResult* result)
 	playerBank->setTangibleGroup(TanGroup_PlayerInternal);
 	playerBank->setTangibleType(TanType_Bank);
 	playerBank->setEquipSlotMask(CreatureEquipSlot_Bank);
-
+	playerBank->setCapacity(100);
 	playerObject->mEquipManager.addEquippedObject(CreatureEquipSlot_Bank,playerBank);
 
 	// weapon

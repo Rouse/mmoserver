@@ -52,6 +52,7 @@ class DatabaseCallback;
 class DatabaseResult;
 class DispatchClient;
 class PlayerObject;
+class Bank;
 
 //======================================================================================================================
 enum GalaxyBankAccount
@@ -91,20 +92,27 @@ enum GalaxyBankAccount
 	Account_NewPlayerQuests				=	33,
 	Account_ContrabandScanningFines		=	34,
 	Account_Bank						=	35
+<<<<<<< HEAD
 	
 };
+=======
+>>>>>>> Feature_BankDepositbox
 
+};
 enum TREMQueryType
 {
 	TREMQuery_NULL							=	0,
 	TREMQuery_BankTipgetId					=	1,
 	TREMQuery_BankTipTransaction			=	2,
+<<<<<<< HEAD
 	TREMQuery_BankTipUpdateGalaxyAccount	=	3
+=======
+	TREMQuery_BankTipUpdateGalaxyAccount	=	3,
+	TREMQuery_BankDepositBox				=	4
+>>>>>>> Feature_BankDepositbox
 
 };
-
 //======================================================================================================================
-
 class TreasuryManagerAsyncContainer
 {
 
@@ -116,10 +124,12 @@ class TreasuryManagerAsyncContainer
 		TREMQueryType		mQueryType;
 		DispatchClient*		mClient;
 
+
 		uint32				amount;
 		uint32				surcharge;
 		PlayerObject*		player;
 		PlayerObject*		target;
+		Bank*				bank;
 		uint64				targetId;
 		string				targetName;
 };
@@ -149,6 +159,7 @@ class TreasuryManager : public DatabaseCallback, UICallback
 
 		void						    saveAndUpdateInventoryCredits(PlayerObject* playerObject);
 		void						    saveAndUpdateBankCredits(PlayerObject* playerObject);
+		void						    saveAndUpdateBankItems(PlayerObject* playerObject);
 
 		//handles bank tip to offline player
 		void							handleBankTipSurchargeConfirmed(TreasuryManagerAsyncContainer* asyncContainer);
