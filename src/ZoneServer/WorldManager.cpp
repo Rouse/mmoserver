@@ -44,6 +44,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "Heightmap.h"
 #include "MissionManager.h"
 #include "NpcManager.h"
+#include "SpawnManager.h"
 #include "NPCObject.h"
 #include "PlayerStructure.h"
 #include "ResourceCollectionManager.h"
@@ -251,6 +252,7 @@ void WorldManager::Shutdown()
 	mCreatureSpawnRegionMap.clear();
 
 	NpcManager::deleteManager();
+	SpawnManager::deleteManager();
 
 	Heightmap::deleter();
 
@@ -914,6 +916,8 @@ void WorldManager::_handleLoadComplete()
 
 	// Init NPC Manager, will load lairs from the DB.
 	(void)NpcManager::Instance();
+	//// Init NPC Manager, will load spawns from the DB.
+	(void)SpawnManager::Instance();
 
 	// Initialize the queues for NPC-Manager.
 	mNpcManagerScheduler->addTask(fastdelegate::MakeDelegate(this,&WorldManager::_handleDormantNpcs),5,2500,NULL);

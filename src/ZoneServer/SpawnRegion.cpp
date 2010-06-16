@@ -40,8 +40,10 @@ SpawnRegion::SpawnRegion()
 , mSI(gWorldManager->getSI())
 , mMission(0)
 {
-	mActive		= true;
-	mRegionType = Region_Spawn;
+	mActive				= true;
+	mRegionType			= Region_Spawn;
+	mInactivityTimer	= 0;
+	mSpawnActivity		= false;
 }
 
 //=============================================================================
@@ -108,14 +110,34 @@ void SpawnRegion::update()
 }
 
 //=============================================================================
+void SpawnRegion::spawnArea()
+{
+	SpawnLairList::iterator it = spawnData->lairTypeList.begin();
+	while(it != spawnData->lairTypeList.end())
+	{
+	}
+	
+}
 
 void SpawnRegion::onObjectEnter(Object* object)
 {
+	if(mKnownPlayers.size() == 0)
+	{
+		//we got company - if were not spawned start spawning now
+		if(!mSpawnActivity)//when we get empty we have a timer until we despawn
+		{
+			//
+			spawnArea();
+		}
+		
+	}
+
 	if(object->getParentId() == mParentId)
 	{
 		//PlayerObject* player = (PlayerObject*)object;
 		addKnownObjectSafe(object);
 	}
+
 }
 
 //=============================================================================

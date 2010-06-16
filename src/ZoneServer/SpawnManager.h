@@ -25,13 +25,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ---------------------------------------------------------------------------------------
 */
 
-#ifndef ANH_ZONESERVER_NPC_MANAGER_H
-#define ANH_ZONESERVER_NPC_MANAGER_H
+#ifndef ANH_ZONESERVER_SPAWN_MANAGER_H
+#define ANH_ZONESERVER_SPAWN_MANAGER_H
 
 
 #include "DatabaseManager/DatabaseCallback.h"
 #include "Utils/typedefs.h"
 #include "ObjectFactoryCallback.h"
+#include <map>
+#include <list>
 
 //=============================================================================
 
@@ -39,34 +41,80 @@ class AttackableCreature;
 class CreatureObject;
 class Database;
 class NPCObject;
-class SpawnData;
 class Weapon;
+class SpawnData;
+
+struct SpawnDataStruct;
+struct LairData;
+
+// please note that all spawns / lairs creatures are non persistent objects
+// so any id we will give them comes from the non persitent object pool
+// the db ids are just datacollection  references
+
+typedef std::list<LairData>		SpawnLairList;
+
+struct SpawnDataStruct
+{
+	uint32			spawnId;
+	float			posX;
+	float			posZ;
+	uint32			width;
+	uint32			height;
+	uint32			planet;
+	uint32			density;
+	SpawnLairList	lairTypeList;
+	
+};
+
+struct LairData
+{
+	uint32	lairId; 
+	uint32	spawnGroupId;
+	uint32	templateId;
+	uint32	creatureGroupId;
+	string	lairObjectString;
+	string	stfName;
+	string	stfFile;
+	string	stfDetailName;
+	string	stfDetailFile;
+	float	posZ;
+	uint32	width;
+	uint32	height;
+	uint32	planet;
+	uint32	density;
+};
+
+typedef std::map<uint32,SpawnDataStruct>	SpawnMap;
 
 //======================================================================================================================
 //
 // Container for asyncronous database queries
 //
-enum NpcQuery
+enum SpawnQuery
 {
-	NpcQuery_Lairs = 0
+	SpawnQuery_Lairs				= 0,
+	SpawnQuery_Spawns				= 1,
+	SpawnQuery_Group				= 2
 };
 
-class NpcAsyncContainer
+class SpawnAsyncContainer
 {
 	public:
-		NpcAsyncContainer(NpcQuery query){ mQuery = query;}
-		NpcQuery mQuery;
+		SpawnAsyncContainer(SpawnQuery query){ mQuery = query;}
+		SpawnQuery mQuery;
+
+		uint32	spawnGroup;
 };
 
 
 //=============================================================================
 
 
-class NpcManager  : public ObjectFactoryCallback, public DatabaseCallback
+class SpawnManager  : public ObjectFactoryCallback, public DatabaseCallback
 {
 	public:
 
-		static NpcManager* Instance(void);
+		static SpawnManager* Instance(void);
 
 		static inline void deleteManager(void)
 		{
@@ -82,35 +130,33 @@ class NpcManager  : public ObjectFactoryCallback, public DatabaseCallback
 		virtual void    handleDatabaseJobComplete(void* ref, DatabaseResult* result);
 
 		// void	addCreature(uint64 creatureId, const SpawnData *spawn);
-		void	handleExpiredCreature(uint64 creatureId);
+		//void	handleExpiredCreature(uint64 creatureId);
 		// void	removeNpc(uint64 npcId);
-		bool	handleAttack(CreatureObject *attacker, uint64 targetId);
+		//bool	handleAttack(CreatureObject *attacker, uint64 targetId);
 
-		uint64	handleNpc(NPCObject* npc, uint64 timeOverdue);
+		//uint64	handleNpc(NPCObject* npc, uint64 timeOverdue);
 
-		//void	loadLairs(void);
-		void spawnLairs(uint32 lairId);
+		void	loadLairs(void);
+		void	loadSpawns(void);
+		void	loadSpawnGroup(uint32 spawn);
 
 
 	protected:
-		NpcManager(Database* database);
-		~NpcManager();
+		SpawnManager(Database* database);
+		~SpawnManager();
 
 	private:
 		// This constructor prevents the default constructor to be used, since it is private.
-		NpcManager();
+		SpawnManager();
 
 		// Simulated Combat Manager
-		uint8	_hitCheck(CreatureObject* attacker,CreatureObject* defender,Weapon* weapon);
-		bool	_verifyCombatState(CreatureObject* attacker, uint64 defenderId);
-
-		uint8	_executeAttack(CreatureObject* attacker,CreatureObject* defender,Weapon* weapon);
-		void	setTargetDirection(AttackableCreature* npc);
 		// void			_setupDatabindings();
 		// void			_destroyDatabindings();
 
-		static NpcManager* mInstance;
+		static SpawnManager* mInstance;
 		Database* mDatabase;
+
+		SpawnMap		mSpawnListMap;
 		// DataBinding*	mItemIdentifierBinding;
 		// DataBinding*	mItemBinding;
 };

@@ -96,7 +96,7 @@ class NpcLairEntityEx
 	public:
 		NpcLairEntityEx(){}
 		
-		uint64	mCreatureSpwanRegion;
+		uint64	mCreatureSpawnRegion;
 		uint64	mTemplateId;
 		uint32	mCreatureGroup;
 		uint32	mNumberOfLairs;
@@ -184,16 +184,11 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 		{
 			NpcLairEntityEx lair;
 
-			DataBinding* lairSpawnBinding = mDatabase->CreateDataBinding(9);
-			lairSpawnBinding->addField(DFT_uint64,offsetof(NpcLairEntityEx,mCreatureSpwanRegion),8,0);
+			DataBinding* lairSpawnBinding = mDatabase->CreateDataBinding(4);
+			lairSpawnBinding->addField(DFT_uint64,offsetof(NpcLairEntityEx,mCreatureSpawnRegion),8,0);
 			lairSpawnBinding->addField(DFT_uint64,offsetof(NpcLairEntityEx,mTemplateId),8,1);
 			lairSpawnBinding->addField(DFT_uint32,offsetof(NpcLairEntityEx,mCreatureGroup),4,2);
-			lairSpawnBinding->addField(DFT_uint32,offsetof(NpcLairEntityEx,mNumberOfLairs),4,3);
-			lairSpawnBinding->addField(DFT_float,offsetof(NpcLairEntityEx,mSpawnPosX),4,4);
-			lairSpawnBinding->addField(DFT_float,offsetof(NpcLairEntityEx,mSpawnPosZ),4,5);
-			lairSpawnBinding->addField(DFT_float,offsetof(NpcLairEntityEx,mSpawnDirY),4,6);
-			lairSpawnBinding->addField(DFT_float,offsetof(NpcLairEntityEx,mSpawnDirW),4,7);
-			lairSpawnBinding->addField(DFT_uint32,offsetof(NpcLairEntityEx,mFamily),4,8);
+			lairSpawnBinding->addField(DFT_uint32,offsetof(NpcLairEntityEx,mFamily),4,3);
 			
 			DataBinding* lairSpawnNpcBinding = mDatabase->CreateDataBinding(4);
 			lairSpawnNpcBinding->addField(DFT_bstring,offsetof(NPCObject,mModel),255,9);
@@ -236,10 +231,10 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 			npc->mDirection.w = lair.mSpawnDirW;
 
 			// Let's get the spawn area.
-			const Anh_Math::Rectangle spawnArea = gWorldManager->getSpawnArea(lair.mCreatureSpwanRegion);
+			//const Anh_Math::Rectangle spawnArea = gWorldManager->getSpawnArea(lair.mCreatureSpwanRegion);
 
 			// lair.mCreatureSpwanRegion
-			npc->setSpawnArea(spawnArea); 
+			//npc->setSpawnArea(spawnArea); 
 
 			result->ResetRowIndex();
 			result->GetNextRow(lairSpawnNpcBinding,(void*)npc );
@@ -628,9 +623,10 @@ void NonPersistentNpcFactory::_destroyDatabindings()
 //=============================================================================
 void NonPersistentNpcFactory::requestLairObject(ObjectFactoryCallback* ofCallback, uint64 lairsId, uint64 npcNewId)
 {
-	mDatabase->ExecuteSqlAsync(this,new QueryNonPersistentNpcFactory(ofCallback, NonPersistentNpcQuery_LairTemplate, lairsId, npcNewId),
-								"SELECT lairs.creature_spawn_region, lairs.lair_template, lairs.creature_group, lairs.count, lairs.spawn_x, lairs.spawn_z, "
-								"lairs.spawn_dir_Y, lairs.spawn_dir_W, "
+	QueryNonPersistentNpcFactory* asynccontainer = new QueryNonPersistentNpcFactory(ofCallback, NonPersistentNpcQuery_LairTemplate, lairsId, npcNewId);
+
+	mDatabase->ExecuteSqlAsync(this,asynccontainer,
+								"SELECT lairs.spawn_group_id, lairs.lair_template, lairs.creature_group "
 								"lairs.family, lair_templates.lair_object_string, lair_templates.stf_name, lair_templates.stf_file, "
 								"faction.name "
 								"FROM lairs "

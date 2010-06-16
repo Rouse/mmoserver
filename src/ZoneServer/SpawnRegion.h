@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #define ANH_ZONESERVER_SPAWNREGION_H
 
 #include "RegionObject.h"
+#include "SpawnManager.h"
 #include "MathLib/Rectangle.h"
 #include "Utils/typedefs.h"
 
@@ -50,14 +51,18 @@ class SpawnRegion : public RegionObject
 		SpawnRegion();
 		virtual ~SpawnRegion();
 
-		uint32			getSpawnType(){ return mSpawnType; }
-		void			setSpawnType(uint32 type){ mSpawnType = type; }
-		bool			isMission(){return (mMission != 0);}
+		uint32				getSpawnType(){ return mSpawnType; }
+		void				setSpawnType(uint32 type){ mSpawnType = type; }
+		bool				isMission(){return (mMission != 0);}
 
-		virtual void	update();
-		virtual void	onObjectEnter(Object* object);
-		virtual void	onObjectLeave(Object* object);
+		virtual void		update();
+		virtual void		onObjectEnter(Object* object);
+		virtual void		onObjectLeave(Object* object);
 
+		void				spawnArea();
+
+
+		SpawnDataStruct*	spawnData;
 	protected:
 
 		Anh_Math::Rectangle mQueryRect;
@@ -65,6 +70,10 @@ class SpawnRegion : public RegionObject
 		ZoneTree*			mSI;
 		uint32				mMission;
 		uint32				mSpawnType;
+
+		//activity
+		bool				mSpawnActivity;
+		uint64				mInactivityTimer;
 };
 
 

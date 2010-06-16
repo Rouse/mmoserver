@@ -90,7 +90,7 @@ NpcManager::NpcManager()
 NpcManager::NpcManager(Database* database) :mDatabase(database)
 {
 	// _setupDatabindings();
-	this->loadLairs();
+	//this->loadLairs();
 }
 
 
@@ -199,7 +199,7 @@ void NpcManager::handleObjectReady(Object* object)
 // This part is where the natural lairs are loaded from DB.
 //
 //=============================================================================================================================
-void NpcManager::loadLairs(void)
+/*void NpcManager::loadLairs(void)
 {
 	//load lair and creature spawn, and optionally heightmaps cache.
 	// NpcFamily_NaturalLairs
@@ -209,6 +209,18 @@ void NpcManager::loadLairs(void)
 								"FROM lairs "
 								"INNER JOIN spawns ON (lairs.creature_spawn_region = spawns.id) "
 								"WHERE spawns.spawn_planet=%u AND lairs.family=%u ORDER BY lairs.id;",gWorldManager->getZoneId(), NpcFamily_NaturalLairs);
+}
+*/
+
+void NpcManager::spawnLairs(uint32 lairId)
+{
+	uint64 npcNewId = gWorldManager->getRandomNpNpcIdSequence();
+
+	if (npcNewId != 0)
+	{
+		NonPersistentNpcFactory* nonPersistentNpcFactory = NonPersistentNpcFactory::Instance();
+		nonPersistentNpcFactory->requestLairObject(this, lairId, npcNewId);
+	}
 }
 
 void NpcManager::handleDatabaseJobComplete(void* ref, DatabaseResult* result)
@@ -238,7 +250,6 @@ void NpcManager::handleDatabaseJobComplete(void* ref, DatabaseResult* result)
 
 				for (uint64 lairs = 0; lairs < lair.mNumberOfLairs; lairs++)
 				{
-					// We need two id's in sequence, since nps'c have an inventory.
 					uint64 npcNewId = gWorldManager->getRandomNpNpcIdSequence();
 
 					if (npcNewId != 0)

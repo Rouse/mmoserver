@@ -292,6 +292,7 @@
     <ClCompile Include="ShuttleFactory.cpp" />
     <ClCompile Include="Skill.cpp" />
     <ClCompile Include="SkillManager.cpp" />
+    <ClCompile Include="SpawnManager.cpp" />
     <ClCompile Include="SpawnRegion.cpp" />
     <ClCompile Include="SpawnRegionFactory.cpp" />
     <ClCompile Include="StaticObject.cpp" />
@@ -518,6 +519,7 @@
     <ClInclude Include="Skill.h" />
     <ClInclude Include="SkillEnums.h" />
     <ClInclude Include="SkillManager.h" />
+    <ClInclude Include="SpawnManager.h" />
     <ClInclude Include="SpawnPoint.h" />
     <ClInclude Include="SpawnRegion.h" />
     <ClInclude Include="SpawnRegionFactory.h" />
