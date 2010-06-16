@@ -274,6 +274,7 @@ void TreasuryManager::bankOpenSafetyDepositContainer(PlayerObject* playerObject)
 			{
 				Item* bankItem = dynamic_cast<Item*>(gWorldManager->getObjectById((*listIt)));
 				gMessageLib->sendCreateObject(bankItem,playerObject,false);
+				listIt++;
 			}
 			gMessageLib->sendOpenedContainer(bank->getId(), playerObject);
 		}

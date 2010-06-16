@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "WorldManager.h"
 #include "AdminManager.h"
 #include "Buff.h"
+#include "Bank.h"
 #include "BuffEvent.h"
 #include "BuffManager.h"
 #include "BuildingObject.h"
@@ -240,6 +241,11 @@ bool WorldManager::addObject(Object* object,bool manual)
 			if(parentId == 0)
 			{
 				mSpatialIndex->InsertPoint(key,object->mPosition.x,object->mPosition.z);
+			}
+			else if (Bank* bank = dynamic_cast<Bank*>(getObjectById(parentId)))
+			{
+				if(!bank->addObjectSecure(object))
+					gLogger->log(LogManager::DEBUG,"WorldManager::addObject couldn't find bank %"PRIu64"",parentId);
 			}
 			else
 			{
