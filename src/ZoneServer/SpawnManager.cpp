@@ -132,9 +132,9 @@ void SpawnManager::loadSpawns(void)
 	// load spawn data
 
 	mDatabase->ExecuteSqlAsync(this,new SpawnAsyncContainer(SpawnQuery_Spawns),
-								"SELECT s.id, s.spawn_x, s.spawn_z, s.spawn_width, s.spawn_length, s.spawn_density"
-								"FROM spawns s"
-								"WHERE spawns.spawn_planet=%u;",gWorldManager->getZoneId());
+								"SELECT s.id, s.spawn_x, s.spawn_z, s.spawn_width, s.spawn_length, s.spawn_density "
+								"FROM spawns s "
+								"WHERE s.spawn_planet=%u;",gWorldManager->getZoneId());
 }
 
 //these are the lairs that are part of the spawn we want to load
@@ -147,10 +147,10 @@ void SpawnManager::loadSpawnGroup(uint32 spawn)
 	asyncContainer->spawnGroup = spawn;
 
 	mDatabase->ExecuteSqlAsync(this,asyncContainer,
-								"SELECT sg.id, l.id, l.lair_template, l.creature_groups_id"
-								"FROM spawn_groups sg"
+								"SELECT sg.id, l.id, l.lair_template, l.creature_groups_id "
+								"FROM spawn_groups sg "
 								"INNER JOIN  lairs l ON (l.spawn_group_id = sg.id) "
-								"WHERE sg.spawn_id=%u ORDER BY lairs.id;", spawn);
+								"WHERE sg.spawn_id=%u ORDER BY l.id;", spawn);
 }
 
 
@@ -192,6 +192,8 @@ void SpawnManager::handleDatabaseJobComplete(void* ref, DatabaseResult* result)
 				spawnRegion->mPosition.z = (*spawnIt).second.posZ;
 				spawnRegion->setWidth((float)(*spawnIt).second.width);
 				spawnRegion->setHeight((float)(*spawnIt).second.height);
+
+				spawnRegion->setId(gWorldManager->getRandomNpNpcIdSequence());
 
 				spawnRegion->spawnData = &(*spawnIt).second;
 

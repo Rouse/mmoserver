@@ -185,6 +185,7 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 		case NonPersistentNpcQuery_LairTemplate:
 		{
 			NpcLairEntityEx lair;
+			
 
 			DataBinding* lairSpawnBinding = mDatabase->CreateDataBinding(4);
 			lairSpawnBinding->addField(DFT_uint64,offsetof(NpcLairEntityEx,mCreatureSpawnRegion),8,0);
@@ -193,10 +194,10 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 			lairSpawnBinding->addField(DFT_uint32,offsetof(NpcLairEntityEx,mFamily),4,3);
 			
 			DataBinding* lairSpawnNpcBinding = mDatabase->CreateDataBinding(4);
-			lairSpawnNpcBinding->addField(DFT_bstring,offsetof(NPCObject,mModel),255,9);
-			lairSpawnNpcBinding->addField(DFT_bstring,offsetof(NPCObject,mSpecies),255,10);
-			lairSpawnNpcBinding->addField(DFT_bstring,offsetof(NPCObject,mSpeciesGroup),255,11);
-			lairSpawnNpcBinding->addField(DFT_bstring,offsetof(NPCObject,mFaction),32,12);
+			lairSpawnNpcBinding->addField(DFT_bstring,offsetof(NPCObject,mModel),255,4);
+			lairSpawnNpcBinding->addField(DFT_bstring,offsetof(NPCObject,mSpecies),255,5);
+			lairSpawnNpcBinding->addField(DFT_bstring,offsetof(NPCObject,mSpeciesGroup),255,6);
+			lairSpawnNpcBinding->addField(DFT_bstring,offsetof(NPCObject,mFaction),32,7);
 					
 			uint64 count = result->getRowCount();
 
@@ -235,7 +236,11 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 			// Let's get the spawn area.
 			SpawnRegion* spawnRegion = dynamic_cast<SpawnRegion*>(gWorldManager->getObjectById(asyncContainer->mSpawnRegionId));
 
-			npc->mSpawnRegion = spawnRegion->getId(); 
+			npc->mSpawnRegion = 0;
+			if(spawnRegion)
+			{
+				npc->mSpawnRegion = spawnRegion->getId(); 
+			}
 
 			result->ResetRowIndex();
 			result->GetNextRow(lairSpawnNpcBinding,(void*)npc );
@@ -628,11 +633,12 @@ void NonPersistentNpcFactory::requestLairObject(ObjectFactoryCallback* ofCallbac
 
 	asynccontainer->mSpawnRegionId = spawnRegion;
 	mDatabase->ExecuteSqlAsync(this,asynccontainer,
-								"SELECT lairs.spawn_group_id, lairs.lair_template, lairs.creature_group "
+								"SELECT lairs.spawn_group_id, lairs.lair_template, lairs.creature_groups_id, "
 								"lairs.family, lair_templates.lair_object_string, lair_templates.stf_name, lair_templates.stf_file, "
 								"faction.name "
 								"FROM lairs "
-								"INNER JOIN spawns ON (lairs.creature_spawn_region = spawns.id AND %u = spawns.spawn_planet) "
+								"INNER JOIN spawn_groups ON (lairs.spawn_group_id = spawn_groups.id) "
+								"INNER JOIN spawns ON (spawn_groups.spawn_id = spawns.id AND %u = spawns.spawn_planet) "
 								"INNER JOIN lair_templates ON (lairs.lair_template = lair_templates.id) "
 								"INNER JOIN faction ON (lairs.faction = faction.id) "
 								"WHERE lairs.id=%u;",gWorldManager->getZoneId(), lairsId);

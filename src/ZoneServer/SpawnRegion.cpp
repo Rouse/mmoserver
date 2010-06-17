@@ -123,10 +123,16 @@ void SpawnRegion::spawnArea()
 
 	uint32 density = (uint32)(this->mWidth * this->mHeight)/(sDensity);
 
-	density /= spawnData->lairTypeList.size();
+	uint32 lairvariety = spawnData->lairTypeList.size();
+	if(!lairvariety)
+	{
+		return;
+	}
+
+	density /= lairvariety;
 	while(it != spawnData->lairTypeList.end())
 	{
-		for(int i; i < density; i++)
+		for(uint32 i; i < density; i++)
 		{
 			glm::vec3 spawnPoint = getSpawnLocation();
 			if((spawnPoint.x != 0) && (spawnPoint.z != 0))
