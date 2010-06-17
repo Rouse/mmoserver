@@ -26,7 +26,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "TreasuryManager.h"
-#include "ItemFactory.h"
 #include "Container.h"
 #include "ObjectContainer.h"
 #include "Bank.h"
@@ -163,7 +162,6 @@ void TreasuryManager::bankWithdrawAll(PlayerObject* playerObject)
 				bank->setCredits(0);
 
 				// save to the db
-				// FIXME: will need to replace (playerID+4) by the real bankID
 				mDatabase->DestroyResult(mDatabase->ExecuteSynchSql("UPDATE banks SET credits=%u WHERE id=%"PRIu64"",bank->getCredits(),bank->getId()));
 				mDatabase->DestroyResult(mDatabase->ExecuteSynchSql("UPDATE inventories SET credits=%u WHERE id=%"PRIu64"",inventory->getCredits(),inventory->getId()));
 
@@ -295,6 +293,12 @@ void TreasuryManager::bankQuit(PlayerObject* playerObject)
 		}
 
 		// check if the bank item box is empty
+		if(!bank->getObjects()->empty())
+		{
+			gMessageLib->sendSystemMessage(playerObject, L"", "system_msg","bank_not_empty");
+			return;
+		}
+
 
 		// update the playerObject
 		bank->setPlanet(-1);

@@ -31,10 +31,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "TangibleObject.h"
 #include <vector>
 
-typedef std::vector<std::pair<string,uint64> >	SortedBankItemList;
-
 class PlayerObject;
 
+
+typedef std::vector<std::pair<string,uint64> >	SortedBankItemList;
 //=============================================================================
 
 class Bank : public TangibleObject
@@ -48,7 +48,6 @@ class Bank : public TangibleObject
 		~Bank();
 
 		void		setParent(PlayerObject* player){ mParent = player; }
-		//ObjectList*	getObjects(){ return &mObjects; }
 
 		int32		getCredits(){ return mCredits; }
 		void		setCredits(int32 credits){ mCredits = credits; }

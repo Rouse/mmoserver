@@ -689,7 +689,7 @@ bool ObjectController::checkTargetContainer(uint64 targetContainerId, Object* ob
 	}
 
 	//**********************************
-	//the inventory is *NOT* part of the worldmanagers ObjectMap  bank isn't either
+	//the inventory is *NOT* part of the worldmanagers ObjectMap
 	//this is our inventory - we are allowed to put stuff in there - but is there still enough place ?
 	if(inventory&& (inventory->getId() == ownerId) && !bank)
 	{

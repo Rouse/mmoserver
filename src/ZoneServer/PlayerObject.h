@@ -71,9 +71,11 @@ typedef std::map<uint32,BString>				ContactMap;
 //=============================================================================
 enum PlayerOffSet{
 	INVENTORY_OFFSET	= 1,
-	//offset 2
-	//offset 3
-	BANK_OFFSET			= 4
+	MISSION_OFFSET		= 2,
+	DATAPAD_OFFSET		= 3,
+	BANK_OFFSET			= 4,
+	WEAPON_OFFSET		= 5,
+	HAIR_OFFSET			= 8
 
 };
 //======================================================================================================================
