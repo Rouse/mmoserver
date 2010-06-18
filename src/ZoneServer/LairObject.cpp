@@ -570,7 +570,7 @@ void LairObject::killEvent(void)
 		if (npcNewId != 0)
 		{
 			// Let's put this sucker into play again.
-			NonPersistentNpcFactory::Instance()->requestLairObject(NpcManager::Instance(), mLairsTypeId, npcNewId,mSpawnRegion);
+			NonPersistentNpcFactory::Instance()->requestLairObject(NpcManager::Instance(), mLairsTypeId, npcNewId,mSpawnRegion, mPosition);
 		}
 	}
 }

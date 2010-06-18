@@ -116,8 +116,8 @@ void SpawnRegion::spawnArea()
 {
 	SpawnLairList::iterator it = spawnData->lairTypeList.begin();
 	uint32 sDensity = spawnData->density;
-	if(sDensity < 5)
-		sDensity = 5;
+	if(sDensity < 10)
+		sDensity = 10;
 
 	sDensity = sDensity*sDensity;
 
@@ -132,12 +132,12 @@ void SpawnRegion::spawnArea()
 	density /= lairvariety;
 	while(it != spawnData->lairTypeList.end())
 	{
-		for(uint32 i; i < density; i++)
+		for(uint32 i = 0; i < density; i++)
 		{
 			glm::vec3 spawnPoint = getSpawnLocation();
 			if((spawnPoint.x != 0) && (spawnPoint.z != 0))
 			{
-				gNpcManager->spawnLairs((*it).lairId,this->getId());
+				gNpcManager->spawnLairs((*it).lairId,this->getId(),spawnPoint);
 			}
 		}
 		it++;
@@ -165,6 +165,9 @@ bool SpawnRegion::checkSpawnLocation(glm::vec3 location)
 glm::vec3 SpawnRegion::getSpawnLocation()
 {
 	glm::vec3 spawnPoint;
+	spawnPoint.x = 0;
+	spawnPoint.z = 0;
+			
 	bool found = false;
 	uint32 iteration = 0;
 	while(!found)
@@ -188,6 +191,8 @@ glm::vec3 SpawnRegion::getSpawnLocation()
 
 		}
 	}
+
+	return(spawnPoint);
 	
 }
 
@@ -199,6 +204,7 @@ void SpawnRegion::onObjectEnter(Object* object)
 		if(!mSpawnActivity)//when we get empty we have a timer until we despawn
 		{
 			//
+			mSpawnActivity = true;
 			spawnArea();
 		}
 		

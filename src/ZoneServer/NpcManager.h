@@ -32,6 +32,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "DatabaseManager/DatabaseCallback.h"
 #include "Utils/typedefs.h"
 #include "ObjectFactoryCallback.h"
+#include <glm/glm.hpp>
 
 //=============================================================================
 
@@ -91,7 +92,7 @@ class NpcManager  : public ObjectFactoryCallback, public DatabaseCallback
 		uint64	handleNpc(NPCObject* npc, uint64 timeOverdue);
 
 		//void	loadLairs(void);
-		void spawnLairs(uint32 lairId, uint64 spawnregion);
+		void spawnLairs(uint32 lairId, uint64 spawnregion, glm::vec3 spawnPoint);
 
 
 	protected:

@@ -215,8 +215,7 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 			gWorldManager->addObject(npc, true);
 
 			// May need the height also, in case of pre set (fixed) spawn position.
-			npc->mPosition.x = lair.mSpawnPosX;
-			npc->mPosition.z = lair.mSpawnPosZ;
+			npc->mPosition = asyncContainer->mSpawnPosition;
 
 			if (npc->getParentId() == 0)
 			{
@@ -229,6 +228,7 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 				assert(false && "NonPersistentNpcFactory::handleDatabaseJobComplete NonPersistentNpcQuery_LairTemplate No support for handling creatures inside");
 				npc->mPosition.y = 0;
 			}
+			
 			
 			npc->mDirection.y = lair.mSpawnDirY;
 			npc->mDirection.w = lair.mSpawnDirW;
@@ -276,7 +276,7 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 
 			QueryNonPersistentNpcFactory* asContainer = new QueryNonPersistentNpcFactory(asyncContainer->mOfCallback, NonPersistentNpcQuery_LairCreatureTemplates, asyncContainer->mTemplateId, asyncContainer->mId);
 			// Do not transfer object refs, use the handle, i.e. asyncContainer->mId
-			// asContainer->mObject = npc;
+			 //asContainer-> >mObject = npc;
 
 			mDatabase->ExecuteSqlAsync(this, asContainer,
 							"SELECT creature_groups.creature_id "
@@ -627,11 +627,18 @@ void NonPersistentNpcFactory::_destroyDatabindings()
 //	Upgrade version for use of the correct DB.
 //
 //=============================================================================
-void NonPersistentNpcFactory::requestLairObject(ObjectFactoryCallback* ofCallback, uint64 lairsId, uint64 npcNewId, uint64 spawnRegion)
+void NonPersistentNpcFactory::requestLairObject(ObjectFactoryCallback* ofCallback, uint64 lairsId, uint64 npcNewId, uint64 spawnRegion, glm::vec3 spawnPoint)
 {
+	//return;
 	QueryNonPersistentNpcFactory* asynccontainer = new QueryNonPersistentNpcFactory(ofCallback, NonPersistentNpcQuery_LairTemplate, lairsId, npcNewId);
 
+	if(spawnRegion == 0)
+	{
+		return;
+	}
+
 	asynccontainer->mSpawnRegionId = spawnRegion;
+	asynccontainer->mSpawnPosition = spawnPoint;
 	mDatabase->ExecuteSqlAsync(this,asynccontainer,
 								"SELECT lairs.spawn_group_id, lairs.lair_template, lairs.creature_groups_id, "
 								"lairs.family, lair_templates.lair_object_string, lair_templates.stf_name, lair_templates.stf_file, "
@@ -654,6 +661,28 @@ void NonPersistentNpcFactory::requestNpcObject(ObjectFactoryCallback* ofCallback
 											   uint64 parentLairId)
 {
 
+	mDatabase->ExecuteSqlAsync(this,new QueryNonPersistentNpcFactory(ofCallback, NonPersistentNpcQuery_NpcTemplate, creatureTemplateId, npcNewId, spawnCellId, spawnPosition, spawnDirection, respawnDelay, parentLairId),
+								"SELECT non_persistent_npcs.species_id, non_persistent_npcs.loot_group_id, "
+								"non_persistent_npcs.posture, non_persistent_npcs.state, non_persistent_npcs.level, "
+								"non_persistent_npcs.type, non_persistent_npcs.stf_variable_id, non_persistent_npcs.stf_file_id, "
+								"faction.name, "
+								"non_persistent_npcs.moodID, non_persistent_npcs.scale, non_persistent_npcs.family "
+								"FROM non_persistent_npcs "
+								"INNER JOIN faction ON (non_persistent_npcs.faction = faction.id) "
+								"WHERE non_persistent_npcs.id=%"PRIu64";", creatureTemplateId);
+}
+
+void NonPersistentNpcFactory::requestCreatureObject(ObjectFactoryCallback* ofCallback, 
+											   uint64 creatureTemplateId, 
+											   uint64 npcNewId,
+											   uint64 spawnCellId,
+                                               const glm::vec3& spawnPosition, 
+											   const glm::quat&	spawnDirection,
+											   uint64 respawnDelay,
+											   uint64 parentLairId)
+{
+
+	joö
 	mDatabase->ExecuteSqlAsync(this,new QueryNonPersistentNpcFactory(ofCallback, NonPersistentNpcQuery_NpcTemplate, creatureTemplateId, npcNewId, spawnCellId, spawnPosition, spawnDirection, respawnDelay, parentLairId),
 								"SELECT non_persistent_npcs.species_id, non_persistent_npcs.loot_group_id, "
 								"non_persistent_npcs.posture, non_persistent_npcs.state, non_persistent_npcs.level, "

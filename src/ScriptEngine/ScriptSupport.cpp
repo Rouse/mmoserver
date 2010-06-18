@@ -217,16 +217,20 @@ void ScriptSupport::npcSpawnPersistent(NPCObject* npc, uint64 npcId, uint64 cell
 
 void ScriptSupport::npcSpawn(NPCObject* npc, uint64 npcId, uint64 cellForSpawn, std::string firstname, std::string lastname, float dirY, float dirW, float posX, float posY, float posZ)
 {
+	//return;
 	npcSpawnGeneral(npcId, 0, cellForSpawn, firstname, lastname, dirY, dirW, posX, posY, posZ, 0);
 }
 
 void ScriptSupport::npcSpawnPrivate(NPCObject* npc, uint64 npcId, uint64 npcPrivateOwnerId, uint64 cellForSpawn, std::string firstname, std::string lastname, float dirY, float dirW, float posX, float posY, float posZ)
 {
+	//return;
 	npcSpawnGeneral(npcId, npcPrivateOwnerId, cellForSpawn, firstname, lastname, dirY, dirW, posX, posY, posZ, 0);
 }
 
 void ScriptSupport::npcSpawnGeneral(uint64 npcId, uint64 npcPrivateOwnerId, uint64 cellForSpawn, std::string firstname, std::string lastname, float dirY, float dirW, float posX, float posY, float posZ, uint64 respawnDelay) // , uint64 templateId)
 {
+	//return;
+
     glm::quat direction;
     glm::vec3 position;
 
@@ -895,10 +899,10 @@ void ScriptSupport::setPlayerPosition(uint64 playerId, uint64 cellId, float posX
 
 void ScriptSupport::lairSpawn(uint64 lairTypeId)
 {
-	uint64 npcNewId = gWorldManager->getRandomNpNpcIdSequence();
-	if (npcNewId != 0)
-	{
+	//uint64 npcNewId = gWorldManager->getRandomNpNpcIdSequence();
+	//if (npcNewId != 0)
+//	{
 		// Let's put this sucker into play again.
-		NonPersistentNpcFactory::Instance()->requestLairObject(NpcManager::Instance(), lairTypeId, npcNewId,0);
-	}
+		//NonPersistentNpcFactory::Instance()->requestLairObject(NpcManager::Instance(), lairTypeId, npcNewId,0);
+	//}
 }

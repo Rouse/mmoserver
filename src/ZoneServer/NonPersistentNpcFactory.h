@@ -101,7 +101,7 @@ class NonPersistentNpcFactory : public FactoryBase
 		// void	requestObject(ObjectFactoryCallback* ofCallback,uint64 templateId, uint64 npcNewId, const LairData lairData);
 
 		// Upgraded versions
-		void			requestLairObject(ObjectFactoryCallback* ofCallback, uint64 templateId, uint64 npcNewId, uint64 spawnRegion);
+		void			requestLairObject(ObjectFactoryCallback* ofCallback, uint64 templateId, uint64 npcNewId, uint64 spawnRegion, glm::vec3 spawnPoint);
 		// void			requestNpcObject(ObjectFactoryCallback* ofCallback, uint64 creatureTemplateId, uint64 npcNewId, uint64 parentLairId);
 		void			requestNpcObject(ObjectFactoryCallback* ofCallback,
 										   uint64 creatureTemplateId,
