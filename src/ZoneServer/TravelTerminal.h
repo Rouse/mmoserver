@@ -58,6 +58,7 @@ class TravelTerminal : public Terminal
 		virtual void		handleObjectMenuSelect(uint8 messageType,Object* srcObject);
 
 		virtual void		prepareCustomRadialMenu(CreatureObject* creatureObject, uint8 itemCount);
+		virtual bool		RadialisHandledElsewhere() { return true; }
 
 	private:
 

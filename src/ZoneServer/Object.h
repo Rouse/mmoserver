@@ -127,6 +127,7 @@ class Object : public UICallback, public Anh_Utils::EventHandler
 
 		RadialMenuPtr				getRadialMenu(){ return mRadialMenu; }
         virtual void				ResetRadialMenu() {}//	RadialMenu* radial	= NULL;RadialMenuPtr radialPtr(radial);	mRadialMenu = radialPtr;}
+		virtual bool				Radial_isHandledElsewhere() { return false; }
 
 		virtual void				handleUIEvent(uint32 action,int32 element,string inputStr = "",UIWindow* window = NULL) {}
 
