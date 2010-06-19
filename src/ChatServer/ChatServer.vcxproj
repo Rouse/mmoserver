@@ -99,7 +99,6 @@
     <ClCompile Include="GroupManager.cpp" />
     <ClCompile Include="GroupMessages.cpp" />
     <ClCompile Include="GroupObject.cpp" />
-    <ClCompile Include="GuildManager.cpp" />
     <ClCompile Include="PlanetMapHandler.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="StructureManagerChat.cpp" />
@@ -120,7 +119,6 @@
     <ClInclude Include="CSROpcodes.h" />
     <ClInclude Include="GroupManager.h" />
     <ClInclude Include="GroupObject.h" />
-    <ClInclude Include="GuildManager.h" />
     <ClInclude Include="Mail.h" />
     <ClInclude Include="PlanetMapHandler.h" />
     <ClInclude Include="Player.h" />

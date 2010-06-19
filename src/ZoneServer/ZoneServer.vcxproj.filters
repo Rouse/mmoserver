@@ -758,6 +758,9 @@
     <ClCompile Include="GuildTerminal.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GuildManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ActiveConversation.h">
@@ -1469,6 +1472,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GuildTerminal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GuildManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GuildStructures.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

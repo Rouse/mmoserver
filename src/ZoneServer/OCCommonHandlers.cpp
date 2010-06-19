@@ -1511,10 +1511,6 @@ void ObjectController::handleObjectMenuRequest(Message* message)
 	if(!requestedObject->getRadialMenu())
 		requestedObject->prepareCustomRadialMenu(playerObject,static_cast<uint8>(itemCount));
 
-	//This is used for guild terminals because we cannot send an immediate reply with them.
-	if(requestedObject->Radial_isHandledElsewhere())		
-		return;
-
 	if (requestedObject->getRadialMenu())
 	{
 		if(playerObject->isConnected())

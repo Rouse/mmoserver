@@ -166,6 +166,7 @@
     <ClCompile Include="Furniture.cpp" />
     <ClCompile Include="GroupManager.cpp" />
     <ClCompile Include="GroupManagerHandler.cpp" />
+    <ClCompile Include="GuildManager.cpp" />
     <ClCompile Include="GuildTerminal.cpp" />
     <ClCompile Include="Ham.cpp" />
     <ClCompile Include="HamProperty.cpp" />
@@ -429,6 +430,8 @@
     <ClInclude Include="GroupManagerCallbackContainer.h" />
     <ClInclude Include="GroupManagerHandler.h" />
     <ClInclude Include="GroupObject.h" />
+    <ClInclude Include="GuildManager.h" />
+    <ClInclude Include="GuildStructures.h" />
     <ClInclude Include="GuildTerminal.h" />
     <ClInclude Include="Ham.h" />
     <ClInclude Include="HamProperty.h" />
