@@ -634,6 +634,31 @@ bool MessageLib::sendSystemMessageInRange(PlayerObject* playerObject,bool toSelf
 
 	return(true);
 }
+//=======================================================================================================================
+//
+// STF system message
+//
+bool MessageLib::sendSystemMessage(PlayerObject* playerObject, std::string mainFile,std::string mainVar, std::string stfFile, std::string stfVar, std::wstring stfCustom, uint64 stfId, uint8 STFType)
+{
+	switch (STFType)
+	{
+	case (int)TOMessage:
+		return sendSystemMessage(playerObject, L"", mainFile, mainVar, stfFile, stfVar, stfCustom, 0,"","",L"", 0,stfId,0,"","",L"");
+		break;
+	case (int)TTMessage:
+		return sendSystemMessage(playerObject, L"", mainFile, mainVar, "", "", L"", 0,stfFile,stfVar,stfCustom, stfId,0,0,"","",L"");
+		break;
+	case (int)TUMessage:
+		return sendSystemMessage(playerObject, L"", mainFile, mainVar, "" ,"" ,L"", 0,"","",L"", 0,0,stfId,stfFile,stfVar,stfCustom);
+		break;
+	default:
+		//%TO
+		return sendSystemMessage(playerObject, L"", mainFile, mainVar, stfFile, stfVar, stfCustom, 0,"","",L"", 0,stfId,0,"","",L"");
+		break;
+	}
+	
+}
+//=======================================================================================================================
 
 //=======================================================================================================================
 //

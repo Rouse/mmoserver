@@ -85,7 +85,12 @@ enum ObjectUpdate
 	ObjectUpdateAdd			= 2,
 	ObjectUpdateChange		= 3
 };
-
+enum STFMessageType
+{
+	TOMessage				= 0,
+	TTMessage				= 1,
+	TUMessage				= 2
+};
 //======================================================================================================================
 
 class MessageLib
@@ -149,8 +154,10 @@ public:
 	void				sendWeatherUpdate(const glm::vec3& cloudVec, uint32 weatherType, PlayerObject* player = NULL);
 	
 	bool				sendSysMsg(PlayerObject* playerObject,string mainFile,string mainVar,Object* to= NULL, Object* tt = NULL, Object* tu = NULL, int32 di = 0);
-	
-	bool				sendSystemMessage(PlayerObject* playerObject, std::wstring customMessage = L"", std::string mainFile = "",
+
+	bool	virtual		sendSystemMessage(PlayerObject* playerObject, std::string mainFile,std::string mainVar, std::string stfFile, std::string stfVar, 
+							std::wstring stfCustom, uint64 stfId, uint8 STFType);
+	bool	virtual		sendSystemMessage(PlayerObject* playerObject, std::wstring customMessage = L"", std::string mainFile = "",
 											std::string mainVar = "",std::string toFile = "",std::string toVar = "", std::wstring toCustom = L"",int32 di = 0,
 											std::string ttFile = "",std::string ttVar = "",std::wstring ttCustom = L"",uint64 ttId = 0,uint64 toId = 0,uint64 tuId = 0,
 											std::string tuFile = "",std::string tuVar = "",std::wstring tuCustom = L"");

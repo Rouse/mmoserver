@@ -47,6 +47,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "Common/Message.h"
 #include "MessageLib/MessageLib.h"
 #include "Utils/rand.h"
+#include "MessageLib/MessageLib.h"
 
 
 #ifndef min
@@ -449,7 +450,8 @@ bool MedicManager::HealDamage(PlayerObject* Medic, PlayerObject* Target, uint64 
 			}
 			if (!isSelf) {
 				gLogger->log(LogManager::DEBUG,"Target does not need healing");
-				gMessageLib->sendSystemMessage(Medic,L"","healing","no_damage_to_heal_target","","",L"",0,"","",L"",Target->getId());
+				//gMessageLib->sendSystemMessage(Medic,L"","healing","no_damage_to_heal_target","","",L"",0,"","",L"",Target->getId());
+				gMessageLib->sendSystemMessage(Medic,"healing","no_damage_to_heal_target","","",L"",Target->getId(), TTMessage);
 				return false;
 			}
 		}
