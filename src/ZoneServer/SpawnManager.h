@@ -32,10 +32,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "DatabaseManager/DatabaseCallback.h"
 #include "Utils/typedefs.h"
 #include "ObjectFactoryCallback.h"
+#include "Utils/TimerCallback.h"
 #include <map>
 #include <list>
 
 //=============================================================================
+
+namespace Anh_Utils
+{
+    class Clock;
+    class Scheduler;
+    class VariableTimeScheduler;
+}
 
 class AttackableCreature;
 class CreatureObject;
@@ -43,6 +51,7 @@ class Database;
 class NPCObject;
 class Weapon;
 class SpawnData;
+class SpawnRegion;
 
 struct SpawnDataStruct;
 struct LairData;
@@ -51,7 +60,15 @@ struct LairData;
 // so any id we will give them comes from the non persitent object pool
 // the db ids are just datacollection  references
 
-typedef std::list<LairData>		SpawnLairList;
+typedef std::list<LairData>				SpawnLairList;
+
+typedef std::map<uint64, uint64>		NpcDormantHandlers;
+typedef std::map<uint64, uint64>		NpcReadyHandlers;
+typedef std::map<uint64, uint64>		NpcActiveHandlers;
+typedef std::map<uint64, uint64>		CreatureObjectDeletionMap;
+
+// Creature spawn regions.
+typedef std::map<uint64, const SpawnRegion*>	CreatureSpawnRegionMap;
 
 struct SpawnDataStruct
 {
@@ -109,6 +126,7 @@ class SpawnAsyncContainer
 
 //=============================================================================
 
+#define	 gSpawnManager	SpawnManager::Instance()
 
 class SpawnManager  : public ObjectFactoryCallback, public DatabaseCallback
 {
@@ -125,9 +143,40 @@ class SpawnManager  : public ObjectFactoryCallback, public DatabaseCallback
 			}
 		}
 
+		void			process();
+
 		// Inherited  interface that we have to provide.
 		virtual void	handleObjectReady(Object* object);
 		virtual void    handleDatabaseJobComplete(void* ref, DatabaseResult* result);
+
+		void			addRegionToDespawnTimer(Object* object);
+
+		// Add-remove npc from Npc-handler queue's.
+		bool			_handleDormantNpcs(uint64 callTime, void* ref);
+		bool			_handleReadyNpcs(uint64 callTime, void* ref);
+		bool			_handleActiveNpcs(uint64 callTime, void* ref);
+
+		void			addReadyNpc(uint64 creature, uint64 when);
+		void			removeReadyNpc(uint64 creature);
+		void			forceHandlingOfReadyNpc(uint64 creature);
+
+		void			addActiveNpc(uint64 creature, uint64 when);
+		void			removeActiveNpc(uint64 creature);
+
+		void			addDormantNpc(uint64 creature, uint64 when);
+		void			removeDormantNpc(uint64 creature);
+		void			forceHandlingOfDormantNpc(uint64 creature);
+
+		void			unSpawnEntity(uint64 creature);
+
+		// adds dead creature object to the pool of objects with delayed destruction.
+		void			addCreatureObjectForTimedDeletion(uint64 creatureId, uint64 when);
+
+		void			addSpawnRegionForTimedUnSpawn(uint64 RegionId, uint64 when);
+		void			removeSpawnRegionFromTimedUnSpawn(uint64 RegionId);
+
+
+		bool			_handleGeneralObjectTimers(uint64 callTime, void* ref);
 
 		// void	addCreature(uint64 creatureId, const SpawnData *spawn);
 		//void	handleExpiredCreature(uint64 creatureId);
@@ -155,7 +204,17 @@ class SpawnManager  : public ObjectFactoryCallback, public DatabaseCallback
 		static SpawnManager* mInstance;
 		Database* mDatabase;
 
-		SpawnMap		mSpawnListMap;
+		CreatureObjectDeletionMap	mCreatureObjectDeletionMap;
+		CreatureObjectDeletionMap	mLairObjectDeletionMap;
+		SpawnMap					mSpawnListMap;
+		Anh_Utils::Scheduler*		mSpawnRegionScheduler;
+		NpcDormantHandlers			mNpcDormantHandlers;
+		NpcActiveHandlers			mNpcActiveHandlers;
+		NpcReadyHandlers			mNpcReadyHandlers;
+
+		CreatureSpawnRegionMap		mCreatureSpawnRegionMap;
+
+		Anh_Utils::Scheduler*		mNpcManagerScheduler;
 		// DataBinding*	mItemIdentifierBinding;
 		// DataBinding*	mItemBinding;
 };

@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "CombatManager.h"
 #include "CreatureObject.h"
 #include "PlayerObject.h"
+#include "SpawnManager.h"
 #include "Weapon.h"
 #include "WorldConfig.h"
 #include "WorldManager.h"
@@ -127,7 +128,7 @@ void NpcManager::addCreature(uint64 creatureId, const SpawnData *spawn)
 	// Activate npc.
 	// gWorldManager->addReadyNpc(creatureId, spawn->mBasic.timeToFirstSpawn);
 
-	gWorldManager->addDormantNpc(creatureId, spawn->mBasic.timeToFirstSpawn);
+	gSpawnManager->addDormantNpc(creatureId, spawn->mBasic.timeToFirstSpawn);
 }
 */
 
@@ -152,18 +153,18 @@ uint64 NpcManager::handleNpc(NPCObject* npc, uint64 timeOverdue)
 	NPCObject::Npc_AI_State newState = npc->getAiState();
 	if (newState != oldState)
 	{
-		waitTime = 0;
+		waitTime = 0;//waittime = 0 deletes the npc out of the old list
 		if (newState == AttackableCreature::NpcIsDormant)
 		{
-			gWorldManager->addDormantNpc(npc->getId(), newWaitTime);
+			gSpawnManager->addDormantNpc(npc->getId(), newWaitTime);
 		}
 		else if (newState == AttackableCreature::NpcIsReady)
 		{
-			gWorldManager->addReadyNpc(npc->getId(), newWaitTime);
+			gSpawnManager->addReadyNpc(npc->getId(), newWaitTime);
 		}
 		else if (newState == AttackableCreature::NpcIsActive)
 		{
-			gWorldManager->addActiveNpc(npc->getId(), newWaitTime);
+			gSpawnManager->addActiveNpc(npc->getId(), newWaitTime);
 		}
 		else
 		{

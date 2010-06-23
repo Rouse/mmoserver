@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "FillerNPC.h"
 #include "Conversation.h"
 #include "PlayerObject.h"
+#include "SpawnManager.h"
 #include "WorldConfig.h"
 #include "WorldManager.h"
 
@@ -153,7 +154,7 @@ void FillerNPC::addTutorialPlayer(uint64 playerId, TutorialTauntConfigData* conf
 	if (mTutorialPlayers.empty())
 	{
 		// We have to register this npc for service.
-		gWorldManager->addDormantNpc(this->getId(), (uint64)tutorialPlayersPeriodUpdateTime);
+		gSpawnManager->addDormantNpc(this->getId(), (uint64)tutorialPlayersPeriodUpdateTime);
 	}
 	mTutorialPlayers.insert(std::make_pair(playerId, configData));
 }
@@ -176,7 +177,7 @@ void FillerNPC::removeTutorialPlayer(uint64 playerId)
 	if (mTutorialPlayers.empty())
 	{
 		// We have to un-register this npc for service.
-		gWorldManager->removeDormantNpc(this->getId());
+		gSpawnManager->removeDormantNpc(this->getId());
 	}
 }
 

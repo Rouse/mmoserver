@@ -44,6 +44,14 @@ typedef std::list<LairObject*>				LairObjectList;
 
 //=============================================================================
 
+enum ESpawnStatus
+{
+	ESpawnStatus_Unspawned		= 1,
+	ESpawnStatus_Spawned		= 2,
+	ESpawnStatus_AwaitDespawn	= 3
+
+};
+
 class SpawnRegion : public RegionObject
 {
 	friend class SpawnRegionFactory;
@@ -65,10 +73,14 @@ class SpawnRegion : public RegionObject
 		virtual void		onObjectLeave(Object* object);
 
 		void				spawnArea();
+		void				despawnArea();
 		glm::vec3			getSpawnLocation();
 		bool				checkSpawnLocation(glm::vec3 location);
+		bool				checkSpawnDensity(glm::vec3 location);
+		void				setSpawnData(SpawnDataStruct*	spawnData);
+		uint32				getSpawnDensity(){return mDensity;}
 
-		SpawnDataStruct*	spawnData;
+		
 	protected:
 
 		Anh_Math::Rectangle mQueryRect;
@@ -77,11 +89,14 @@ class SpawnRegion : public RegionObject
 		uint32				mMission;
 		uint32				mSpawnType;
 
-		//activity
-		bool				mSpawnActivity;
+		uint32				mDensity;
+
 		uint64				mInactivityTimer;
 
 		LairObjectList		mLairObjectList;
+		SpawnDataStruct*	mSpawnData;
+
+		ESpawnStatus		mSpawnStatus;
 };
 
 

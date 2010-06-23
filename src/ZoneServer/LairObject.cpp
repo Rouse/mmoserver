@@ -33,6 +33,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "PlayerObject.h"
 #include "QuadTree.h"
 #include "SpawnRegion.h"
+#include "SpawnManager.h"
 #include "WorldManager.h"
 #include "ZoneTree.h"
 #include "MessageLib/MessageLib.h"
@@ -67,6 +68,11 @@ LairObject::LairObject(uint64 templateId) : AttackableStaticNpc()
 	{
 		this->mCreatureTemplates[i] = 0;
 		this->mCreatureSpawnRate[i] = 100;
+	}
+
+	for (int32 i = 0; i < this->mWaveSize; i++)
+	{
+		this->mCreatureId[i] = 0;
 	}
 }
 
@@ -117,7 +123,7 @@ void LairObject::addKnownObject(Object* object)
 
 		if ((this->getAiState() == NpcIsDormant))
 		{
-			gWorldManager->forceHandlingOfDormantNpc(this->getId());
+			gSpawnManager->forceHandlingOfDormantNpc(this->getId());
 		}
 	}
 	else
@@ -166,6 +172,13 @@ void LairObject::handleEvents(void)
 			{
 				mLairState = State_LairAlerted;
 				this->setAiState(NpcIsReady);
+			}
+			else
+			{
+				if (!playerInRange(150.0))
+				{
+
+				}
 			}
 		}
 		break;
@@ -263,7 +276,8 @@ uint64 LairObject::handleState(uint64 timeOverdue)
 
 		case State_LairIdle:
 		{
-			waitTime = (10*dormantDefaultPeriodTime); // overdue does not matter, we are just idling. // - timeOverdue;
+			// idling lair - dont we want to remove it at some point ?
+			waitTime = (10*dormantDefaultPeriodTime); 
 		}
 		break;
 
@@ -312,9 +326,9 @@ void LairObject::inPeace(void)
 //	Request assistance from creatures within 45m and not in combat.
 //
 
-
 bool LairObject::requestAssistance(uint64 targetId, uint64 sourceId) const
 {
+	// iterate through all our spawned creatures not in combat and request their aid
 	// All creature not in combat will assist.
 	bool found = false;
 
@@ -509,6 +523,8 @@ void LairObject::spawnInitialWave(void)
 	for (int32 i = 0; i < this->mWaveSize; i++)
 	{
 		// lair->mInitialSpawnPeriod = (uint64)(gRandom->getRand() % (int32)lair->mRespawnPeriod);
+		// ???????????????????????????????????????????
+		//
 		creatureTypeIndex = gRandom->getRand() % (int32)100;	// Better to add all values...
 		for (int32 y = 0; y < MaxCreatureTypes; y++)
 		{
@@ -529,11 +545,22 @@ void LairObject::spawnInitialWave(void)
 		{
 			// Save the id of the creatures in my lair.
 			this->mCreatureId[i] = npcNewId;
-			nonPersistentNpcFactory->requestNpcObject(NpcManager::Instance(), creatureTemplate, npcNewId, this->getParentId(), this->mPosition, this->mDirection, 0, this->getId());
+			nonPersistentNpcFactory->requestCreatureObject(NpcManager::Instance(), creatureTemplate, npcNewId, this->getParentId(), this->mPosition, this->mDirection, 0, this->getId());
 		}
 	}
 }
 
+//=============================================================================
+//
+//	add a spawned creature to us - we want to keep track of our spawns
+/*
+void LairObject::addSpawnedCreature(uint64 ObjectId)
+{
+	addToSpawnedCreatureList(ObjectId);
+
+	//any special things we might want to tell them ?
+}
+*/
 //=============================================================================
 //
 //	Check if we have any player near us.
@@ -573,6 +600,32 @@ void LairObject::killEvent(void)
 			NonPersistentNpcFactory::Instance()->requestLairObject(NpcManager::Instance(), mLairsTypeId, npcNewId,mSpawnRegion, mPosition);
 		}
 	}
+}
+
+//=============================================================================
+//
+// remove our spawned creatures from the world
+//
+void LairObject::unSpawn(void)
+{
+	//remove all our creatures from the world
+	for (int32 i = 0; i < this->mWaveSize; i++)
+	{
+		uint64 creatureId = this->mCreatureId[i];
+		AttackableCreature* creature = dynamic_cast<AttackableCreature*>(gWorldManager->getObjectById(creatureId));
+		if(creature)
+		{
+			//any last words ?
+			creature->unSpawn();
+			gSpawnManager->unSpawnEntity(creatureId);
+		}
+		else
+		{
+			//perhaps we didnt have all out ??
+			//assert(false && "LairObject::unSpawn(void) :: cant find creature");
+		}
+	}
+		
 }
 
 // This will become the standard create and spawn routine...
@@ -745,25 +798,31 @@ void LairObject::respawn(void)
 		}
 		*/
 
-
-
-		// Register object with WorldManager.
-		// Done when creating the object.
-		// gWorldManager->addObject(this, true);
-
 		// Put the lair in the Dormant queue.
 		// I do not want all lair running at same respawn period to do their initial spawn at the same time.
 		this->mInitialSpawnDelay = (int64)this->getRespawnDelay() + (int64)(((uint64)gRandom->getRand() * 1000) % (this->getRespawnDelay() + 1));
+		if(this->getFirstSpawn())
+		{
+			gLogger->log(LogManager::DEBUG,"LairObject::ReSpawnArea() first spawn!!!  %"PRIu64"",this->getId());
+			this->mInitialSpawnDelay = (((uint64)gRandom->getRand() * 5) +1);
+			this->setFirstSpawn(false);
+		}
 
 		// When spawning, the lair awaits activation in the dormant queue, so we load the lair instantly and have a wait timer running before the spawn.
 		// Since we can force a lair (any object) out of the dormant queue, we have to do the actual spwan countdown with a created object.
-		gWorldManager->addDormantNpc(getId(), 0);
+		gSpawnManager->addDormantNpc(getId(), 0);
 	}
 	else
 	{
 		assert(false && "LairObject::respawn mNpcFamily != NpcFamily_NaturalLairs");
 	}
 }
+
+//=============================================================================
+//
+// one of our creatures reports in as dead
+//
+// in short - we start a new spawn - the old objects gets removed through the spawnmanager (mCreatureObjectDeletionMap)
 
 void LairObject::reportedDead(uint64 deadCreatureId)
 {
@@ -772,6 +831,9 @@ void LairObject::reportedDead(uint64 deadCreatureId)
 	// this->mCreatureId[i] = npcNewId;
 	for (int32 i = 0; i < this->mWaveSize; i++)
 	{
+		//removeFromSpawnedCreatureList(deadCreatureId);
+		
+		//if we are of a wave we need to respawn - still any waves left?
 		if ((deadCreatureId == this->mCreatureId[i]) && (this->mPassiveCreature[i] > 0))
 		{
 			found = true;
@@ -803,13 +865,37 @@ void LairObject::reportedDead(uint64 deadCreatureId)
 				// Save the id of the creatures in my lair.
 				this->mCreatureId[i] = npcNewId;
 				// nonPersistentNpcFactory->requestNpcObject(NpcManager::Instance(), creatureTemplate, npcNewId, this->getId());
-				nonPersistentNpcFactory->requestNpcObject(NpcManager::Instance(), creatureTemplate, npcNewId, this->getParentId(), this->mPosition, this->mDirection, 0, this->getId());
+				nonPersistentNpcFactory->requestCreatureObject(NpcManager::Instance(), creatureTemplate, npcNewId, this->getParentId(), this->mPosition, this->mDirection, 0, this->getId());
 			}
 		}
+		
 	}
 	if (!found)
 	{
 	}
+}
+
+
+//=============================================================================
+//
+// remove one of our creaturespawns from the world
+// it will not be replaced
+// 
+
+void LairObject::removeSpawn(uint64 creatureId)
+{
+
+	// this->mCreatureId[i] = npcNewId;
+	for (int32 i = 0; i < this->mWaveSize; i++)
+	{
+		//removeFromSpawnedCreatureList(deadCreatureId);
+		if ((creatureId == this->mCreatureId[i]))
+		{
+			this->mCreatureId[i] = 0;
+		}
+		
+	}
+	
 }
 
 
@@ -820,12 +906,12 @@ void LairObject::setSpawnArea(uint64 SpawnAreaId)
 
 void LairObject::setCreatureTemplate(uint32 index, uint64 creatureTemplateId)
 {
-	assert(index < MaxCreatureTypes && "LairObject::setCreatureTemplate index parameter must be greater than MaxCreatureTypes");
+	assert(index < MaxCreatureTypes && "LairObject::setCreatureTemplate index parameter must NOT be greater than MaxCreatureTypes");
 	this->mCreatureTemplates[index] = creatureTemplateId;
 }
 
 void LairObject::setCreatureSpawnRate(uint32 index, uint32 spawnRate)
 {
-	assert(index < MaxCreatureTypes && "LairObject::setCreatureSpawnRate index parameter must be greater than MaxCreatureTypes");
+	assert(index < MaxCreatureTypes && "LairObject::setCreatureSpawnRate index parameter must NOT be greater than MaxCreatureTypes");
 	this->mCreatureSpawnRate[index] = spawnRate;
 }

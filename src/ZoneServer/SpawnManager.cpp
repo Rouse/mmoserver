@@ -24,12 +24,13 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ---------------------------------------------------------------------------------------
 */
-
-#include "SpawnManager.h"
-#include "SpawnRegion.h"
 #include "AttackableCreature.h"
 #include "CreatureObject.h"
+#include "LairObject.h"
+#include "NpcManager.h"
 #include "PlayerObject.h"
+#include "SpawnManager.h"
+#include "SpawnRegion.h"
 #include "WorldConfig.h"
 #include "WorldManager.h"
 #include "ZoneServer/NonPersistentNpcFactory.h"
@@ -41,6 +42,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "DatabaseManager/DataBinding.h"
 
 #include "Utils/utils.h"
+#include "Utils/clock.h"
 #include "Utils/rand.h"
 
 #include <cassert>
@@ -89,6 +91,15 @@ SpawnManager::SpawnManager()
 SpawnManager::SpawnManager(Database* database) :mDatabase(database)
 {
 	// _setupDatabindings();
+		// Initialize the queues for NPC-Manager.
+	mNpcManagerScheduler	= new Anh_Utils::Scheduler();
+
+	mNpcManagerScheduler->addTask(fastdelegate::MakeDelegate(this,&SpawnManager::_handleDormantNpcs),5,2500,NULL);
+	mNpcManagerScheduler->addTask(fastdelegate::MakeDelegate(this,&SpawnManager::_handleReadyNpcs),5,1000,NULL);
+	mNpcManagerScheduler->addTask(fastdelegate::MakeDelegate(this,&SpawnManager::_handleActiveNpcs),5,250,NULL);
+
+	mNpcManagerScheduler->addTask(fastdelegate::MakeDelegate(this,&SpawnManager::_handleGeneralObjectTimers),5,2000,NULL);
+	
 	this->loadSpawns();
 }
 
@@ -99,10 +110,29 @@ SpawnManager::~SpawnManager()
 {
 	// _destroyDatabindings();
 	mInstance = NULL;
+	
+	mNpcDormantHandlers.clear();
+	mNpcReadyHandlers.clear();
+	mNpcActiveHandlers.clear();
+
+	CreatureSpawnRegionMap::iterator it = mCreatureSpawnRegionMap.begin();
+	while (it != mCreatureSpawnRegionMap.end())
+	{
+		delete (*it).second;
+		mCreatureSpawnRegionMap.erase(it++);
+	}
+	mCreatureSpawnRegionMap.clear();
+	mCreatureObjectDeletionMap.clear();
+
+	delete(mNpcManagerScheduler);
 }
 
 //=============================================================================
 
+void SpawnManager::process()
+{
+	mNpcManagerScheduler->process();
+}
 //=============================================================================
 //
 //	Handle npc.
@@ -119,6 +149,10 @@ void SpawnManager::handleObjectReady(Object* object)
 	}
 }
 
+//void SpawnManager::addRegionToDespawnTimer(Object* object)
+//{
+	//mSpawnRegionScheduler->addTask(fastdelegate::MakeDelegate(this,&gSpawnManager::_handleDormantNpcs),5,2500,NULL);
+//}
 
 //=============================================================================================================================
 //
@@ -126,7 +160,6 @@ void SpawnManager::handleObjectReady(Object* object)
 //
 //=============================================================================================================================
 
-//
 void SpawnManager::loadSpawns(void)
 {
 	// load spawn data
@@ -137,7 +170,12 @@ void SpawnManager::loadSpawns(void)
 								"WHERE s.spawn_planet=%u;",gWorldManager->getZoneId());
 }
 
+//=============================================================================================================================
+//
 //these are the lairs that are part of the spawn we want to load
+//
+//=============================================================================================================================
+
 void SpawnManager::loadSpawnGroup(uint32 spawn)
 {
 	//load lair and creature spawn, and optionally heightmaps cache.
@@ -147,13 +185,152 @@ void SpawnManager::loadSpawnGroup(uint32 spawn)
 	asyncContainer->spawnGroup = spawn;
 
 	mDatabase->ExecuteSqlAsync(this,asyncContainer,
-								"SELECT sg.id, l.id, l.lair_template, l.creature_groups_id "
+								"SELECT sg.id, l.id, l.lair_template, l.creature_group "
 								"FROM spawn_groups sg "
-								"INNER JOIN  lairs l ON (l.spawn_group_id = sg.id) "
+								"INNER JOIN  lairs l ON (l.creature_spawn_region = sg.id) "
 								"WHERE sg.spawn_id=%u ORDER BY l.id;", spawn);
 }
 
+//======================================================================================================================
+//
+// Handle the queue of Ready npc's.
+//
 
+bool SpawnManager::_handleReadyNpcs(uint64 callTime, void* ref)
+{
+	NpcReadyHandlers::iterator it = mNpcReadyHandlers.begin();
+	while (it != mNpcReadyHandlers.end())
+	{
+		//  The timer has expired?
+		if (callTime >= ((*it).second))
+		{
+			// Yes, handle it.
+			NPCObject* npc = dynamic_cast<NPCObject*>(gWorldManager->getObjectById((*it).first));
+			if (npc)
+			{
+				// uint64 waitTime = NpcManager::Instance()->handleReadyNpc(creature, callTime - (*it).second);
+				// gLogger->log(LogManager::DEBUG,"Ready...");
+				// gLogger->log(LogManager::DEBUG,"Ready... ID = %"PRIu64"",  (*it).first);
+				uint64 waitTime = NpcManager::Instance()->handleNpc(npc, callTime - (*it).second);
+				if (waitTime)
+				{
+					// Set next execution time.
+					(*it).second = callTime + waitTime;
+				}
+				else
+				{
+					// Requested to remove the handler.
+					mNpcReadyHandlers.erase(it++);
+					// gLogger->log(LogManager::DEBUG,"Removed ready NPC handler...");
+				}
+			}
+			else
+			{
+				// Remove the expired object...
+				mNpcReadyHandlers.erase(it++);
+				// gLogger->log(LogManager::DEBUG,"Removed ready NPC handler...");
+			}
+		}
+		else
+		{
+			++it;
+		}
+	}
+	return true;
+}
+
+//======================================================================================================================
+//
+// Handle the queue of Dormant npc's.
+//
+
+bool SpawnManager::_handleDormantNpcs(uint64 callTime, void* ref)
+{
+	NpcDormantHandlers::iterator it = mNpcDormantHandlers.begin();
+	while (it != mNpcDormantHandlers.end())
+	{
+		//  The timer has expired?
+		if (callTime >= ((*it).second))
+		{
+			// Yes, handle it.
+			NPCObject* npc = dynamic_cast<NPCObject*>(gWorldManager->getObjectById((*it).first));
+			if (npc)
+			{
+				// uint64 waitTime = NpcManager::Instance()->handleDormantNpc(creature, callTime - (*it).second);
+				// gLogger->log(LogManager::DEBUG,"Dormant... ID = %"PRIu64"",  (*it).first);
+				uint64 waitTime = NpcManager::Instance()->handleNpc(npc, callTime - (*it).second);
+
+				if (waitTime)
+				{
+					// Set next execution time.
+					(*it).second = callTime + waitTime;
+				}
+				else
+				{
+					// gLogger->log(LogManager::DEBUG,"Removed dormant NPC handler... %"PRIu64"",  (*it).first);
+
+					// Requested to remove the handler.
+					mNpcDormantHandlers.erase(it++);
+				}
+			}
+			else
+			{
+				// Remove the expired object...
+				mNpcDormantHandlers.erase(it++);
+				gLogger->log(LogManager::DEBUG,"Removed expired dormant NPC handler...");
+			}
+		}
+		else
+		{
+			++it;
+		}
+	}
+	return true;
+}
+
+//======================================================================================================================
+//
+//	Add a npc to the Dormant queue.
+//
+
+void SpawnManager::addDormantNpc(uint64 creature, uint64 when)
+{
+	 gLogger->log(LogManager::DEBUG,"Adding dormant NPC handler... %"PRIu64"",  creature);
+
+	uint64 expireTime = Anh_Utils::Clock::getSingleton()->getLocalTime();
+	mNpcDormantHandlers.insert(std::make_pair(creature, expireTime + when));
+}
+
+//======================================================================================================================
+//
+//	Remove a npc from the Dormant queue.
+//
+
+void SpawnManager::removeDormantNpc(uint64 creature)
+{
+	NpcDormantHandlers::iterator it = mNpcDormantHandlers.find(creature);
+	if (it != mNpcDormantHandlers.end())
+	{
+		// Remove creature.
+		mNpcDormantHandlers.erase(it);
+	}
+}
+
+//======================================================================================================================
+//
+//	Force a npc from the Dormant queue to be handled at next tick.
+//
+
+void SpawnManager::forceHandlingOfDormantNpc(uint64 creature)
+{
+	NpcDormantHandlers::iterator it = mNpcDormantHandlers.find(creature);
+	if (it != mNpcDormantHandlers.end())
+	{
+		// Change the event time to NOW.
+		uint64 now = Anh_Utils::Clock::getSingleton()->getLocalTime();
+		(*it).second = now;
+	}
+}
 
 void SpawnManager::handleDatabaseJobComplete(void* ref, DatabaseResult* result)
 {
@@ -183,9 +360,9 @@ void SpawnManager::handleDatabaseJobComplete(void* ref, DatabaseResult* result)
 					result->GetNextRow(lairBinding,&data);
 
 					(*spawnIt).second.lairTypeList.push_back(data);
-
-				
+		
 				}
+
 				//now create the spawnregion
 				SpawnRegion* spawnRegion = new(SpawnRegion);
 				spawnRegion->mPosition.x = (*spawnIt).second.posX;
@@ -195,7 +372,7 @@ void SpawnManager::handleDatabaseJobComplete(void* ref, DatabaseResult* result)
 
 				spawnRegion->setId(gWorldManager->getRandomNpNpcIdSequence());
 
-				spawnRegion->spawnData = &(*spawnIt).second;
+				spawnRegion->setSpawnData(&(*spawnIt).second);
 
 				gWorldManager->addObject(spawnRegion);
 
@@ -247,3 +424,304 @@ void SpawnManager::handleDatabaseJobComplete(void* ref, DatabaseResult* result)
 }
 
 
+//======================================================================================================================
+//
+//	Add a npc to the Active queue.
+//
+
+void SpawnManager::addActiveNpc(uint64 creature, uint64 when)
+{
+	uint64 expireTime = Anh_Utils::Clock::getSingleton()->getLocalTime();
+
+	mNpcActiveHandlers.insert(std::make_pair(creature, expireTime + when));
+}
+
+//======================================================================================================================
+//
+//	Remove a npc from the Active queue.
+//
+
+void SpawnManager::removeActiveNpc(uint64 creature)
+{
+	NpcActiveHandlers::iterator it = mNpcActiveHandlers.find(creature);
+	if (it != mNpcActiveHandlers.end())
+	{
+		// Remove creature.
+		mNpcActiveHandlers.erase(it);
+	}
+}
+
+//======================================================================================================================
+//
+// Handle the queue of Active npc's.
+//
+bool SpawnManager::_handleActiveNpcs(uint64 callTime, void* ref)
+{
+	NpcActiveHandlers::iterator it = mNpcActiveHandlers.begin();
+	while (it != mNpcActiveHandlers.end())
+	{
+		//  The timer has expired?
+		if (callTime >= ((*it).second))
+		{
+			// Yes, handle it.
+			
+			NPCObject* npc = dynamic_cast<NPCObject*>(gWorldManager->getObjectById((*it).first));
+			if (npc)
+			{
+				// uint64 waitTime = NpcManager::Instance()->handleActiveNpc(creature, callTime - (*it).second);
+				// gLogger->log(LogManager::DEBUG,"Active...");
+				// gLogger->log(LogManager::DEBUG,"Active... ID = %"PRIu64"",  (*it).first);
+				uint64 waitTime = NpcManager::Instance()->handleNpc(npc, callTime - (*it).second);
+				if (waitTime)
+				{
+					// Set next execution time.
+					(*it).second = callTime + waitTime;
+				}
+				else
+				{
+					// Requested to remove the handler.
+					mNpcActiveHandlers.erase(it++);
+					// gLogger->log(LogManager::DEBUG,"Removed active NPC handler...");
+				}
+			}
+			else
+			{
+				// Remove the expired object...
+				mNpcActiveHandlers.erase(it++);
+				// gLogger->log(LogManager::DEBUG,"Removed active NPC handler...");
+			}
+		}
+		else
+		{
+			++it;
+		}
+	}
+	return true;
+}
+
+//======================================================================================================================
+//
+//	Force a npc from the Ready queue to be handled at next tick.
+//
+
+void SpawnManager::forceHandlingOfReadyNpc(uint64 creature)
+{
+	NpcReadyHandlers::iterator it = mNpcReadyHandlers.find(creature);
+	if (it != mNpcReadyHandlers.end())
+	{
+		// Change the event time to NOW.
+		uint64 now = Anh_Utils::Clock::getSingleton()->getLocalTime();
+		(*it).second = now;
+	}
+}
+
+//======================================================================================================================
+//
+//	Add a npc to the Ready queue.
+//
+
+void SpawnManager::addReadyNpc(uint64 creature, uint64 when)
+{
+	uint64 expireTime = Anh_Utils::Clock::getSingleton()->getLocalTime();
+
+	mNpcReadyHandlers.insert(std::make_pair(creature, expireTime + when));
+}
+
+//======================================================================================================================
+//
+//	Remove a npc from the Ready queue.
+//
+
+void SpawnManager::removeReadyNpc(uint64 creature)
+{
+	NpcReadyHandlers::iterator it = mNpcReadyHandlers.find(creature);
+	if (it != mNpcReadyHandlers.end())
+	{
+		// Remove creature.
+		mNpcReadyHandlers.erase(it);
+	}
+}
+
+//======================================================================================================================
+//
+//	Add a timed entry for deletion of inactive spawn regions
+//
+void SpawnManager::addSpawnRegionForTimedUnSpawn(uint64 RegionId, uint64 when)
+{
+	uint64 expireTime = Anh_Utils::Clock::getSingleton()->getLocalTime();
+
+	 gLogger->log(LogManager::DEBUG,"WorldManager::addSpawnRegionForTimedUnSpawn Adding new region %I64u at %"PRIu64"", RegionId, expireTime + when);
+
+	CreatureObjectDeletionMap::iterator it = mLairObjectDeletionMap.find(RegionId);
+	if (it != mLairObjectDeletionMap.end())
+	{
+		return;
+	}
+	// gLogger->log(LogManager::DEBUG,"Adding new object with id %"PRIu64"", creatureId);
+	mLairObjectDeletionMap.insert(std::make_pair(RegionId, expireTime + when));
+}
+
+//======================================================================================================================
+//
+//	remove a timed entry for deletion of  inactive spawn regions
+//
+void SpawnManager::removeSpawnRegionFromTimedUnSpawn(uint64 RegionId)
+{
+	CreatureObjectDeletionMap::iterator it = mLairObjectDeletionMap.find(RegionId);
+	if (it != mLairObjectDeletionMap.end())
+	{
+		gLogger->log(LogManager::DEBUG,"SpawnManager::removeSpawnRegionFromTimedUnSpawn :: UnSpawned region  %"PRIu64"",RegionId);
+		mLairObjectDeletionMap.erase(it++);
+		return;
+	}
+	else
+		gLogger->log(LogManager::DEBUG,"SpawnManager::removeSpawnRegionFromTimedUnSpawn :: Region  %"PRIu64" Not Found!!!",RegionId);
+}
+
+//======================================================================================================================
+//
+//	Add a timed entry for deletion of dead creature objects.
+//
+void SpawnManager::addCreatureObjectForTimedDeletion(uint64 creatureId, uint64 when)
+{
+	uint64 expireTime = Anh_Utils::Clock::getSingleton()->getLocalTime();
+
+	// gLogger->log(LogManager::DEBUG,"WorldManager::addCreatureObjectForTimedDeletion Adding new at %"PRIu64"", expireTime + when);
+
+	CreatureObjectDeletionMap::iterator it = mCreatureObjectDeletionMap.find(creatureId);
+	if (it != mCreatureObjectDeletionMap.end())
+	{
+		// Only remove object if new expire time is earlier than old. (else people can use "lootall" to add 10 new seconds to a corpse forever).
+		if (expireTime + when < (*it).second)
+		{
+			// gLogger->log(LogManager::DEBUG,"Removing object with id %"PRIu64"", creatureId);
+			mCreatureObjectDeletionMap.erase(it);
+		}
+		else
+		{
+			return;
+		}
+
+	}
+	// gLogger->log(LogManager::DEBUG,"Adding new object with id %"PRIu64"", creatureId);
+	mCreatureObjectDeletionMap.insert(std::make_pair(creatureId, expireTime + when));
+}
+
+//======================================================================================================================
+//
+// remove us from the world if we are a timed out corpse 
+// or if we are a nonactive spawnregion 
+//
+bool SpawnManager::_handleGeneralObjectTimers(uint64 callTime, void* ref)
+{
+	CreatureObjectDeletionMap::iterator it = mCreatureObjectDeletionMap.begin();
+	while (it != mCreatureObjectDeletionMap.end())
+	{
+		//  The timer has expired?
+		if (callTime >= ((*it).second))
+		{
+			// Is it a valid object?
+			CreatureObject* creature = dynamic_cast<CreatureObject*>(gWorldManager->getObjectById((*it).first));
+			if (creature)
+			{
+				// Yes, handle it. We may put up a copy of this npc...
+				NpcManager::Instance()->handleExpiredCreature((*it).first);
+				gWorldManager->destroyObject(creature);
+				mCreatureObjectDeletionMap.erase(it++);
+				gWorldManager->removeNpId(creature->getId());
+				gWorldManager->removeNpId(creature->getId()+1);//inventory
+			}
+			else
+			{
+				// Remove the invalid object...from this list.
+				mCreatureObjectDeletionMap.erase(it++);
+				assert(false && "SpawnManager::_handleGeneralObjectTimers creature invalid" );
+			}
+		}
+		else
+		{
+			++it;
+		}
+	}
+
+
+	it = mLairObjectDeletionMap.begin();
+	while (it != mLairObjectDeletionMap.end())
+	{
+		//  The timer has expired?
+		if (callTime >= ((*it).second))
+		{
+			// Is it a valid object?
+			SpawnRegion* region = dynamic_cast<SpawnRegion*>(gWorldManager->getObjectById((*it).first));
+			if (region)
+			{
+				region->despawnArea();
+				mLairObjectDeletionMap.erase(it++);
+			}
+			else
+			{
+				// Remove the invalid object...from this list.
+				mLairObjectDeletionMap.erase(it++);
+				assert(false && "SpawnManager::_handleGeneralObjectTimers spawnregion invalid" );
+			}
+		}
+		else
+		{
+			++it;
+		}
+	}
+
+	return (true);
+}
+
+//======================================================================================================================
+//
+//	removes an entity from the world and destroys it
+//  use to remove entities manually without them generating a respawn
+//  use this if we are not dead
+void SpawnManager::unSpawnEntity(uint64 creatureId)
+{
+	//get rid of any lists
+	
+	AttackableCreature* creature = dynamic_cast<AttackableCreature*>(gWorldManager->getObjectById(creatureId));
+	if (creature)
+	{
+		if (LairObject* lair = dynamic_cast<LairObject*>(gWorldManager->getObjectById(creature->getLairId())))
+		{
+			//we might need to report to the lair as removed
+			lair->removeSpawn(creatureId);
+			gLogger->log(LogManager::DEBUG,"SpawnManager::unSpawnEntity :: DeSpawned creature %"PRIu64" parent %"PRIu64"",creatureId,lair->getId());
+			
+		}
+		else
+			gLogger->log(LogManager::DEBUG,"SpawnManager::unSpawnEntity :: DeSpawned creature # %"PRIu64"",creatureId);
+
+		removeActiveNpc(creatureId);
+		removeReadyNpc(creatureId);
+		removeDormantNpc(creatureId);
+		gWorldManager->destroyObject(creature);
+		gWorldManager->removeNpId(creature->getId());
+		gWorldManager->removeNpId(creature->getId()+1);//inventory
+	}
+	else
+	if (LairObject* lair = dynamic_cast<LairObject*>(gWorldManager->getObjectById(creatureId)))
+	{
+		//remove our spawned creatures
+		lair->unSpawn();
+
+		gLogger->log(LogManager::DEBUG,"SpawnManager::unSpawnEntity :: DeSpawned lair %"PRIu64"",creatureId);
+
+		removeActiveNpc(creatureId);
+		removeReadyNpc(creatureId);
+		removeDormantNpc(creatureId);
+		gWorldManager->destroyObject(lair);
+		gWorldManager->removeNpId(lair->getId());
+		gWorldManager->removeNpId(lair->getId()+1);//inventory
+	}
+	else
+	{
+		Object* object = dynamic_cast<Object*>(gWorldManager->getObjectById(creatureId));
+
+		gLogger->log(LogManager::DEBUG,"SpawnManager::unSpawnEntity :: entity %"PRIu64" not found",creatureId);
+	}
+}

@@ -83,9 +83,10 @@ class QueryNonPersistentNpcFactory
 		uint64					mId;
 		uint64					mSpawnCellId;
 		uint64					mSpawnRegionId;
-        glm::vec3		mSpawnPosition; 
-        glm::quat	mSpawnDirection;
+        glm::vec3				mSpawnPosition; 
+        glm::quat				mSpawnDirection;
 		uint64					mRespawnDelay;
+		bool					mFirstSpawn;
 		uint64					mParentObjectId;
 };
 
@@ -239,6 +240,7 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 			npc->mSpawnRegion = 0;
 			if(spawnRegion)
 			{
+				spawnRegion->addLair(npc);
 				npc->mSpawnRegion = spawnRegion->getId(); 
 			}
 
@@ -324,16 +326,55 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 		}
 		break;
 
-		case NonPersistentNpcQuery_NpcTemplate:
+		case NonPersistentNpcQuery_CreatureTemplate:
 		{
 			NPCObject* npc = _createNonPersistentNpc(result, asyncContainer->mTemplateId, asyncContainer->mId, asyncContainer->mParentObjectId);
-			assert(npc);
+			//assert(npc);
+			if(!npc)
+			{
+				delete asyncContainer;
+				return;
+			}
 
 			// Spawn related data.
 			npc->setCellIdForSpawn(asyncContainer->mSpawnCellId);
 			npc->setSpawnPosition(asyncContainer->mSpawnPosition);
 			npc->setSpawnDirection(asyncContainer->mSpawnDirection);
 			npc->setRespawnDelay(asyncContainer->mRespawnDelay);
+			npc->setFirstSpawn(asyncContainer->mFirstSpawn);
+
+			if( npc->getLoadState() == LoadState_Loaded && asyncContainer->mOfCallback)
+			{
+				asyncContainer->mOfCallback->handleObjectReady(npc);
+			}
+			else if (npc->getLoadState() == LoadState_Attributes)
+			{
+				QueryNonPersistentNpcFactory* asContainer = new QueryNonPersistentNpcFactory(asyncContainer->mOfCallback,NonPersistentNpcQuery_Attributes, 0, npc->getId());
+
+				mDatabase->ExecuteSqlAsync(this,asContainer,"SELECT attributes.name,c.value,attributes.internal"
+					" FROM creature_attributes c"
+					" INNER JOIN attributes ON (c.attribute_id = attributes.id)"
+					" WHERE c.creature_id = %"PRIu64" ORDER BY c.order", asyncContainer->mTemplateId);
+			}
+		}
+		break;
+
+		case NonPersistentNpcQuery_NpcTemplate:
+		{
+			NPCObject* npc = _createNonPersistentNpc(result, asyncContainer->mTemplateId, asyncContainer->mId, asyncContainer->mParentObjectId);
+			
+			assert(npc);
+			if(!npc)
+			{
+				return;
+			}
+
+			// Spawn related data.
+			npc->setCellIdForSpawn(asyncContainer->mSpawnCellId);
+			npc->setSpawnPosition(asyncContainer->mSpawnPosition);
+			npc->setSpawnDirection(asyncContainer->mSpawnDirection);
+			npc->setRespawnDelay(asyncContainer->mRespawnDelay);
+			npc->setFirstSpawn(asyncContainer->mFirstSpawn);
 
 			if( npc->getLoadState() == LoadState_Loaded && asyncContainer->mOfCallback)
 			{
@@ -377,13 +418,16 @@ NPCObject* NonPersistentNpcFactory::_createNonPersistentNpc(DatabaseResult* resu
 	NpcIdentifier	npcIdentifier;
 
 	uint64 count = result->getRowCount();
+	if(!count)
+	{
+		return NULL;
+	}
 
 	result->GetNextRow(mNpcIdentifierBinding,(void*)&npcIdentifier);
 	result->ResetRowIndex();
 
 	return this->createNonPersistentNpc(result, templateId, npcNewId, npcIdentifier.mFamilyId, controllingObject);
 }
-
 
 NPCObject* NonPersistentNpcFactory::createNonPersistentNpc(DatabaseResult* result, uint64 templateId, uint64 npcNewId, uint32 familyId, uint64 controllingObject)
 {
@@ -445,12 +489,21 @@ NPCObject* NonPersistentNpcFactory::createNonPersistentNpc(DatabaseResult* resul
 	// Set the new temporarily id.
 	npc->setId(npcNewId);
 
-	// Register object with WorldManager.
+	// Register object with WorldManager. dont add to si yet!!
 	gWorldManager->addObject(npc, true);
 
+	// inventory
 	Inventory*	npcInventory = new Inventory();
 	npcInventory->setCapacity(50);//we want to be able to fill something in our inventory
 	npcInventory->setParent(npc);
+	npcInventory->setId(npc->mId + 1);
+	npcInventory->setParentId(npc->mId);
+	npcInventory->setModelString("object/tangible/inventory/shared_creature_inventory.iff");
+	npcInventory->setName("inventory");
+	npcInventory->setNameFile("item_n");
+	npcInventory->setTangibleGroup(TanGroup_Inventory);
+	npcInventory->setTangibleType(TanType_CreatureInventory);
+	npc->mEquipManager.addEquippedObject(CreatureEquipSlot_Inventory,npcInventory);
 
 	uint64 count = result->getRowCount();
 
@@ -464,17 +517,7 @@ NPCObject* NonPersistentNpcFactory::createNonPersistentNpc(DatabaseResult* resul
 	npc->mHam.mAction.setCurrentHitPoints(500);
 	npc->mHam.mMind.setCurrentHitPoints(500);
 	npc->mHam.calcAllModifiedHitPoints();
-
-	// inventory
-	npcInventory->setId(npc->mId + 1);
-	npcInventory->setParentId(npc->mId);
-	npcInventory->setModelString("object/tangible/inventory/shared_creature_inventory.iff");
 	
-	npcInventory->setName("inventory");
-	npcInventory->setNameFile("item_n");
-	npcInventory->setTangibleGroup(TanGroup_Inventory);
-	npcInventory->setTangibleType(TanType_CreatureInventory);
-	npc->mEquipManager.addEquippedObject(CreatureEquipSlot_Inventory,npcInventory);
 
 	if (npc->getNpcFamily() == NpcFamily_AttackableObject)
 	{
@@ -587,13 +630,12 @@ NPCObject* NonPersistentNpcFactory::createNonPersistentNpc(DatabaseResult* resul
 	}
 	npc->setLoadState(LoadState_Attributes);
 
-	// Save default direction, since player can make the npc change heading.
-	// Can't apply this to a dynamically created npc.
-	// npc->storeDefaultDirection();
 	return npc;
 }
 
 //=============================================================================
+//
+// 
 
 void NonPersistentNpcFactory::_setupDatabindings()
 {
@@ -624,12 +666,12 @@ void NonPersistentNpcFactory::_destroyDatabindings()
 
 //=============================================================================
 //
-//	Upgrade version for use of the correct DB.
+// request a lair
 //
 //=============================================================================
-void NonPersistentNpcFactory::requestLairObject(ObjectFactoryCallback* ofCallback, uint64 lairsId, uint64 npcNewId, uint64 spawnRegion, glm::vec3 spawnPoint)
+void NonPersistentNpcFactory::requestLairObject(ObjectFactoryCallback* ofCallback, uint64 lairsId, uint64 npcNewId, uint64 spawnRegion, glm::vec3 spawnPoint, bool firstSpawn)
 {
-	//return;
+	
 	QueryNonPersistentNpcFactory* asynccontainer = new QueryNonPersistentNpcFactory(ofCallback, NonPersistentNpcQuery_LairTemplate, lairsId, npcNewId);
 
 	if(spawnRegion == 0)
@@ -638,39 +680,23 @@ void NonPersistentNpcFactory::requestLairObject(ObjectFactoryCallback* ofCallbac
 	}
 
 	asynccontainer->mSpawnRegionId = spawnRegion;
+	asynccontainer->mFirstSpawn = firstSpawn;
 	asynccontainer->mSpawnPosition = spawnPoint;
 	mDatabase->ExecuteSqlAsync(this,asynccontainer,
-								"SELECT lairs.spawn_group_id, lairs.lair_template, lairs.creature_groups_id, "
+								"SELECT lairs.creature_spawn_region, lairs.lair_template, lairs.creature_group, "
 								"lairs.family, lair_templates.lair_object_string, lair_templates.stf_name, lair_templates.stf_file, "
 								"faction.name "
 								"FROM lairs "
-								"INNER JOIN spawn_groups ON (lairs.spawn_group_id = spawn_groups.id) "
+								"INNER JOIN spawn_groups ON (lairs.creature_spawn_region = spawn_groups.id) "
 								"INNER JOIN spawns ON (spawn_groups.spawn_id = spawns.id AND %u = spawns.spawn_planet) "
 								"INNER JOIN lair_templates ON (lairs.lair_template = lair_templates.id) "
 								"INNER JOIN faction ON (lairs.faction = faction.id) "
 								"WHERE lairs.id=%u;",gWorldManager->getZoneId(), lairsId);
 }
 
-void NonPersistentNpcFactory::requestNpcObject(ObjectFactoryCallback* ofCallback, 
-											   uint64 creatureTemplateId, 
-											   uint64 npcNewId,
-											   uint64 spawnCellId,
-                                               const glm::vec3& spawnPosition, 
-											   const glm::quat&	spawnDirection,
-											   uint64 respawnDelay,
-											   uint64 parentLairId)
-{
-
-	mDatabase->ExecuteSqlAsync(this,new QueryNonPersistentNpcFactory(ofCallback, NonPersistentNpcQuery_NpcTemplate, creatureTemplateId, npcNewId, spawnCellId, spawnPosition, spawnDirection, respawnDelay, parentLairId),
-								"SELECT non_persistent_npcs.species_id, non_persistent_npcs.loot_group_id, "
-								"non_persistent_npcs.posture, non_persistent_npcs.state, non_persistent_npcs.level, "
-								"non_persistent_npcs.type, non_persistent_npcs.stf_variable_id, non_persistent_npcs.stf_file_id, "
-								"faction.name, "
-								"non_persistent_npcs.moodID, non_persistent_npcs.scale, non_persistent_npcs.family "
-								"FROM non_persistent_npcs "
-								"INNER JOIN faction ON (non_persistent_npcs.faction = faction.id) "
-								"WHERE non_persistent_npcs.id=%"PRIu64";", creatureTemplateId);
-}
+//===========================================================================================================================
+//
+//request a crearure Object
 
 void NonPersistentNpcFactory::requestCreatureObject(ObjectFactoryCallback* ofCallback, 
 											   uint64 creatureTemplateId, 
@@ -682,14 +708,12 @@ void NonPersistentNpcFactory::requestCreatureObject(ObjectFactoryCallback* ofCal
 											   uint64 parentLairId)
 {
 
-	joö
-	mDatabase->ExecuteSqlAsync(this,new QueryNonPersistentNpcFactory(ofCallback, NonPersistentNpcQuery_NpcTemplate, creatureTemplateId, npcNewId, spawnCellId, spawnPosition, spawnDirection, respawnDelay, parentLairId),
-								"SELECT non_persistent_npcs.species_id, non_persistent_npcs.loot_group_id, "
-								"non_persistent_npcs.posture, non_persistent_npcs.state, non_persistent_npcs.level, "
-								"non_persistent_npcs.type, non_persistent_npcs.stf_variable_id, non_persistent_npcs.stf_file_id, "
-								"faction.name, "
-								"non_persistent_npcs.moodID, non_persistent_npcs.scale, non_persistent_npcs.family "
-								"FROM non_persistent_npcs "
-								"INNER JOIN faction ON (non_persistent_npcs.faction = faction.id) "
-								"WHERE non_persistent_npcs.id=%"PRIu64";", creatureTemplateId);
+	mDatabase->ExecuteSqlAsync(this,new QueryNonPersistentNpcFactory(ofCallback, NonPersistentNpcQuery_CreatureTemplate, creatureTemplateId, npcNewId, spawnCellId, spawnPosition, spawnDirection, respawnDelay, parentLairId),
+								"SELECT c.creature_species_id, c.loot_group_id, "
+								"c.creature_posture, c.creature_state, c.creature_level, "
+								"c.creature_type, c.stf_variable_id, c.stf_file_id, "
+								"f.name, c.creature_moodID, c.creature_scale , c.creature_family "
+								"FROM creatures c "
+								"INNER JOIN faction f ON (c.creature_faction = f.id) "
+								"WHERE c.id=%"PRIu64";", creatureTemplateId);
 }

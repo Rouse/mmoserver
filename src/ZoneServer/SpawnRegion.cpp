@@ -45,7 +45,8 @@ SpawnRegion::SpawnRegion()
 	mActive				= true;
 	mRegionType			= Region_Spawn;
 	mInactivityTimer	= 0;
-	mSpawnActivity		= false;
+	mSpawnStatus		= ESpawnStatus_Unspawned;
+	mDensity			= 50;
 }
 
 //=============================================================================
@@ -111,26 +112,38 @@ void SpawnRegion::update()
 	}
 }
 
+
+void SpawnRegion::setSpawnData(SpawnDataStruct*	spawnData)
+{
+	mSpawnData = spawnData;
+	if(!mSpawnData)
+	{
+		return;
+	}
+	mDensity = spawnData->density;
+	if(mDensity < 50)
+		mDensity = 50;
+}
+
+
 //=============================================================================
 void SpawnRegion::spawnArea()
 {
-	SpawnLairList::iterator it = spawnData->lairTypeList.begin();
-	uint32 sDensity = spawnData->density;
-	if(sDensity < 10)
-		sDensity = 10;
+	SpawnLairList::iterator it = mSpawnData->lairTypeList.begin();
+	
 
-	sDensity = sDensity*sDensity;
+	uint32 sDensity = mDensity*mDensity;
 
 	uint32 density = (uint32)(this->mWidth * this->mHeight)/(sDensity);
 
-	uint32 lairvariety = spawnData->lairTypeList.size();
+	uint32 lairvariety = mSpawnData->lairTypeList.size();
 	if(!lairvariety)
 	{
 		return;
 	}
 
 	density /= lairvariety;
-	while(it != spawnData->lairTypeList.end())
+	while(it != mSpawnData->lairTypeList.end())
 	{
 		for(uint32 i = 0; i < density; i++)
 		{
@@ -145,6 +158,25 @@ void SpawnRegion::spawnArea()
 	
 }
 
+//====================================================================================0
+//
+//when we get empty we need to despawn
+//
+
+void SpawnRegion::despawnArea()
+{
+	gLogger->log(LogManager::DEBUG,"SpawnRegion::despawnArea() despawn area  %"PRIu64"",this->getId());
+	LairObjectList::iterator it = mLairObjectList.begin();
+	while(it != mLairObjectList.end())
+	{
+		gLogger->log(LogManager::DEBUG,"SpawnRegion::despawnArea() despawn lair  %"PRIu64"",(*it)->getId());
+		gSpawnManager->unSpawnEntity((*it)->getId());
+
+		it++;
+	}
+	mSpawnStatus = ESpawnStatus_Unspawned;
+}
+
 bool SpawnRegion::checkSpawnLocation(glm::vec3 location)
 {
 	LairObjectList::iterator it = mLairObjectList.begin();
@@ -152,7 +184,33 @@ bool SpawnRegion::checkSpawnLocation(glm::vec3 location)
 	{
 		float distanceFromLair = glm::distance((*it)->mPosition, location);
 		
-		if(distanceFromLair > (float) spawnData->density)
+		if(distanceFromLair < (float) 10)
+			return false;
+
+		it++;
+	}
+
+	return true;
+
+}
+
+//====================================================================================0
+//
+// make sure we havnt got all the lairs in one lump
+//
+bool SpawnRegion::checkSpawnDensity(glm::vec3 location)
+{
+	uint32 count = 0;
+	uint32 amount = (uint32) sqrt((float)mDensity)/2;
+	LairObjectList::iterator it = mLairObjectList.begin();
+	while(it != mLairObjectList.end())
+	{
+		float distanceFromLair = glm::distance((*it)->mPosition, location);
+		
+		if(distanceFromLair < (float) mDensity)
+			count++;
+
+		if(count > amount)
 			return false;
 
 		it++;
@@ -177,13 +235,13 @@ glm::vec3 SpawnRegion::getSpawnLocation()
 		spawnPoint.z = this->mPosition.z + (gRandom->getRand()% ((uint32)this->getHeight()));
 
 		//now check already present lairs
-		if(checkSpawnLocation(spawnPoint))
+		if(checkSpawnLocation(spawnPoint) && checkSpawnDensity(spawnPoint))
 		{
 			return(spawnPoint);
 			found = true;
 		}
 		
-		if(iteration>1000)
+		if(iteration>500)
 		{
 			spawnPoint.x = 0;
 			spawnPoint.z = 0;
@@ -198,16 +256,20 @@ glm::vec3 SpawnRegion::getSpawnLocation()
 
 void SpawnRegion::onObjectEnter(Object* object)
 {
-	if(mKnownPlayers.size() == 0)
+	
+	//we got company - if were not spawned start spawning now
+	if(mSpawnStatus == ESpawnStatus_AwaitDespawn)//when we get empty we have a timer until we despawn
 	{
-		//we got company - if were not spawned start spawning now
-		if(!mSpawnActivity)//when we get empty we have a timer until we despawn
-		{
-			//
-			mSpawnActivity = true;
-			spawnArea();
-		}
-		
+		//
+		gSpawnManager->removeSpawnRegionFromTimedUnSpawn(this->getId());
+		mSpawnStatus = ESpawnStatus_Spawned;
+	}
+	else
+	if(mSpawnStatus == ESpawnStatus_Unspawned)//when we get empty we have a timer until we despawn
+	{
+		//
+		mSpawnStatus = ESpawnStatus_Spawned;
+		spawnArea();
 	}
 
 	if(object->getParentId() == mParentId)
@@ -222,6 +284,12 @@ void SpawnRegion::onObjectEnter(Object* object)
 
 void SpawnRegion::onObjectLeave(Object* object)
 {
+	if((mSpawnStatus == ESpawnStatus_Spawned)&&(mKnownPlayers.size()))//when we get empty we need a timer until we despawn
+	{
+		gSpawnManager->addSpawnRegionForTimedUnSpawn(this->getId(),10000);
+		mSpawnStatus = ESpawnStatus_AwaitDespawn;
+	}
+
 	//PlayerObject* player = (PlayerObject*)object;
 	removeKnownObject(object);
 }

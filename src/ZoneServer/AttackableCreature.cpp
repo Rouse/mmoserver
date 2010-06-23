@@ -33,6 +33,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "NpcManager.h"
 #include "PlayerObject.h"
 #include "QuadTree.h"
+#include "SpawnManager.h"
 #include "ResourceContainer.h"
 #include "Weapon.h"
 #include "WorldManager.h"
@@ -282,7 +283,7 @@ void AttackableCreature::handleObjectMenuSelect(uint8 messageType,Object* srcObj
 								}
 
 								// Put this creaure in the pool of delayed destruction and remove the corpse from scene.
-								gWorldManager->addCreatureObjectForTimedDeletion(this->getId(), LootedCorpseTimeout);
+								gSpawnManager->addCreatureObjectForTimedDeletion(this->getId(), LootedCorpseTimeout);
 							}
 						}
 					}
@@ -339,9 +340,10 @@ void AttackableCreature::addKnownObject(Object* object)
 	{
 		mKnownPlayers.insert(dynamic_cast<PlayerObject*>(object));
 
+		//not spawned shouldnt be in the si in the first place ...
 		if ((this->getAiState() == NpcIsDormant) && this->isAgressive() && isSpawned())	// Do not wake up the not spawned.
 		{
-			gWorldManager->forceHandlingOfDormantNpc(this->getId());
+			gSpawnManager->forceHandlingOfDormantNpc(this->getId());
 		}
 	}
 	else
@@ -1563,7 +1565,10 @@ void AttackableCreature::spawn(void)
 
 	// Update the world about my presence.
 
+	//gLogger->log(LogManager::CRITICAL,"AttackableCreature::spawnCreature: %"PRIu64"\n", this->getId());
+	
 	this->setSpawned();
+	
 	if (this->getParentId())
 	{
 		// insert into cell
@@ -1910,9 +1915,11 @@ void AttackableCreature::killEvent(void)
 			uint64 npcNewId = gWorldManager->getRandomNpNpcIdSequence();
 			if (npcNewId != 0)
 			{
+				// TODO - report death to spawnmanager!!!!!!!!!!!!!
+				// it needs to check the area for players and decide whether we respawn
 				// Let's put this sucker into play again.
 				this->mTimeToFirstSpawn = ((uint64)gRandom->getRand() * 1000) % (this->getRespawnDelay() + 1);
-				NonPersistentNpcFactory::Instance()->requestNpcObject(NpcManager::Instance(),
+				NonPersistentNpcFactory::Instance()->requestCreatureObject(NpcManager::Instance(),
 																		this->getTemplateId(),
 																		npcNewId,
 																		this->getCellIdForSpawn(),
@@ -1922,6 +1929,14 @@ void AttackableCreature::killEvent(void)
 			}
 		}
 	}
+}
+
+//=============================================================================
+//
+// remove it from the world
+//
+void AttackableCreature::unSpawn(void)
+{
 }
 
 void AttackableCreature::respawn(void)
@@ -1970,6 +1985,11 @@ void AttackableCreature::respawn(void)
 
 	// This will give a random spawn delay from 0 up to max delay.
 	mTimeToFirstSpawn = (((uint64)gRandom->getRand() * 1000) % (uint32)(this->getRespawnDelay() + 1));
+	if(this->getFirstSpawn())
+	{
+		mTimeToFirstSpawn = (((uint64)gRandom->getRand() * 5) ) + 5;
+		this->setFirstSpawn(false);
+	}
 
 	// Let us get the spawn point. It's 0 - maxSpawnDistance (2D) meters from the lair.
 	float maxSpawnDistance = parent->getMaxSpawnDistance();
@@ -2403,7 +2423,7 @@ void AttackableCreature::respawn(void)
 	// Put this sucker in the Dormant queue.
 	this->clearSpawned();
 
-	gWorldManager->addDormantNpc(this->getId(), mTimeToFirstSpawn);
+	gSpawnManager->addDormantNpc(this->getId(), mTimeToFirstSpawn);
 }
 
 //=============================================================================
