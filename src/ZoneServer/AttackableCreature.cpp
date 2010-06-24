@@ -1728,6 +1728,7 @@ void AttackableCreature::setupRoaming(int32 maxRangeX, int32 maxRangeZ)
 	{
 		// Verify that we don't roam outside given area.
 		destination = getRandomPosition(mPosition, 2*maxRangeX, 2*maxRangeZ);
+		destination.y = mPosition.y;
         while (glm::distance(getHomePosition(), destination) > getRoamingDistanceMax())
 		{
 			destination = getRandomPosition(mPosition, 2*maxRangeX, 2*maxRangeZ);
