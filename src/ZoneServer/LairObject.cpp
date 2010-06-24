@@ -41,7 +41,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <cassert>
 
-static const int64 dormantDefaultPeriodTime = 10000;
+static const int64 dormantDefaultPeriodTime = 2000;
 static const int64 readyDefaultPeriodTime = 1000;
 
 // For test.
@@ -175,10 +175,10 @@ void LairObject::handleEvents(void)
 			}
 			else
 			{
-				if (!playerInRange(150.0))
-				{
+				//if (!playerInRange(150.0))
+				//{
 
-				}
+				//}
 			}
 		}
 		break;
@@ -260,16 +260,25 @@ void LairObject::handleEvents(void)
 	}
 }
 
+//==============================================================================================0
+//
+// get the period of time until we get another AI slice
+//
+
 uint64 LairObject::handleState(uint64 timeOverdue)
 {
-	uint64 waitTime = 0;
+	uint64 waitTime = 1;
 	// General issues like life and death first.
 
 	switch (mLairState)
 	{
 		case State_LairUnspawned:
 		{
-			waitTime = dormantDefaultPeriodTime - timeOverdue;
+			if(timeOverdue > dormantDefaultPeriodTime)
+				waitTime = 1;
+			else
+				waitTime = dormantDefaultPeriodTime - timeOverdue;
+
 			this->mInitialSpawnDelay -= dormantDefaultPeriodTime;
 		}
 		break;
@@ -805,6 +814,7 @@ void LairObject::respawn(void)
 		{
 			gLogger->log(LogManager::DEBUG,"LairObject::ReSpawnArea() first spawn!!!  %"PRIu64"",this->getId());
 			this->mInitialSpawnDelay = (((uint64)gRandom->getRand() * 5) +1);
+			mInitialSpawnDelay = 0;
 			this->setFirstSpawn(false);
 		}
 

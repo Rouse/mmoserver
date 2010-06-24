@@ -175,6 +175,9 @@ class SpawnManager  : public ObjectFactoryCallback, public DatabaseCallback
 		void			addSpawnRegionForTimedUnSpawn(uint64 RegionId, uint64 when);
 		void			removeSpawnRegionFromTimedUnSpawn(uint64 RegionId);
 
+		void			addSpawnRegionHandling(uint64 RegionId);
+		void			removeSpawnRegionHandling(uint64 RegionId);
+
 
 		bool			_handleGeneralObjectTimers(uint64 callTime, void* ref);
 
@@ -206,6 +209,7 @@ class SpawnManager  : public ObjectFactoryCallback, public DatabaseCallback
 
 		CreatureObjectDeletionMap	mCreatureObjectDeletionMap;
 		CreatureObjectDeletionMap	mLairObjectDeletionMap;
+		CreatureObjectDeletionMap	mSpawnRegionHandlingMap;
 		SpawnMap					mSpawnListMap;
 		Anh_Utils::Scheduler*		mSpawnRegionScheduler;
 		NpcDormantHandlers			mNpcDormantHandlers;

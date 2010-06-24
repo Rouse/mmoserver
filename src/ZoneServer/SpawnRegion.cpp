@@ -127,7 +127,7 @@ void SpawnRegion::setSpawnData(SpawnDataStruct*	spawnData)
 
 
 //=============================================================================
-void SpawnRegion::spawnArea()
+void SpawnRegion::populateArea()
 {
 	SpawnLairList::iterator it = mSpawnData->lairTypeList.begin();
 	
@@ -176,6 +176,38 @@ void SpawnRegion::despawnArea()
 	}
 	mSpawnStatus = ESpawnStatus_Unspawned;
 }
+
+//====================================================================================0
+//
+// create the dormant lairs
+//
+void SpawnRegion::spawnArea()
+{
+	//handleEvents
+	gLogger->log(LogManager::DEBUG,"SpawnRegion::spawnArea() spawn region   %"PRIu64"",this->getId());
+	
+	LairObjectList::iterator it = mLairObjectList.begin();
+	while(it != mLairObjectList.end())
+	{
+		gLogger->log(LogManager::DEBUG,"SpawnRegion::despawnArea() despawn lair  %"PRIu64"",(*it)->getId());
+		
+		
+		if((*it)->getAiState() == NpcIsDormant)
+		{
+			if((*it)->getFirstSpawn())
+			{
+				NpcManager::Instance()->handleNpc((*it),1);
+				//(*it)->spawn();
+			}
+			//gSpawnManager->forceHandlingOfDormantNpc((*it)->getId());
+
+		}
+
+		it++;
+	}
+
+}
+
 
 bool SpawnRegion::checkSpawnLocation(glm::vec3 location)
 {
@@ -269,7 +301,9 @@ void SpawnRegion::onObjectEnter(Object* object)
 	{
 		//
 		mSpawnStatus = ESpawnStatus_Spawned;
-		spawnArea();
+		populateArea();
+		//gSpawnManager->addSpawnRegionHandling(this->getId());
+		
 	}
 
 	if(object->getParentId() == mParentId)
@@ -284,14 +318,15 @@ void SpawnRegion::onObjectEnter(Object* object)
 
 void SpawnRegion::onObjectLeave(Object* object)
 {
-	if((mSpawnStatus == ESpawnStatus_Spawned)&&(mKnownPlayers.size()))//when we get empty we need a timer until we despawn
-	{
-		gSpawnManager->addSpawnRegionForTimedUnSpawn(this->getId(),10000);
-		mSpawnStatus = ESpawnStatus_AwaitDespawn;
-	}
-
 	//PlayerObject* player = (PlayerObject*)object;
 	removeKnownObject(object);
+
+	if((mSpawnStatus == ESpawnStatus_Spawned)&&(mKnownPlayers.size() == 0))//when we get empty we need a timer until we despawn
+	{
+		gSpawnManager->addSpawnRegionForTimedUnSpawn(this->getId(),10000);
+		gSpawnManager->removeSpawnRegionHandling(this->getId());
+		mSpawnStatus = ESpawnStatus_AwaitDespawn;
+	}
 }
 
 //=============================================================================

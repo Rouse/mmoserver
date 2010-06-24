@@ -561,6 +561,44 @@ void SpawnManager::addSpawnRegionForTimedUnSpawn(uint64 RegionId, uint64 when)
 	mLairObjectDeletionMap.insert(std::make_pair(RegionId, expireTime + when));
 }
 
+
+
+//======================================================================================================================
+//
+//	Add a timed entry for deletion of inactive spawn regions
+//
+void SpawnManager::addSpawnRegionHandling(uint64 RegionId)
+{
+	uint64 expireTime = Anh_Utils::Clock::getSingleton()->getLocalTime();
+
+	 gLogger->log(LogManager::DEBUG,"WorldManager::addSpawnRegionHandling Adding new region %I64u at %"PRIu64"", RegionId, expireTime + 5000);
+
+	CreatureObjectDeletionMap::iterator it = mSpawnRegionHandlingMap.find(RegionId);
+	if (it != mSpawnRegionHandlingMap.end())
+	{
+		return;
+	}
+	// gLogger->log(LogManager::DEBUG,"Adding new object with id %"PRIu64"", creatureId);
+	mSpawnRegionHandlingMap.insert(std::make_pair(RegionId, expireTime + 5000));
+}
+
+//======================================================================================================================
+//
+//	stop an empty spawnregion from updating its entities
+//
+void SpawnManager::removeSpawnRegionHandling(uint64 RegionId)
+{
+	CreatureObjectDeletionMap::iterator it = mSpawnRegionHandlingMap.find(RegionId);
+	if (it != mSpawnRegionHandlingMap.end())
+	{
+		gLogger->log(LogManager::DEBUG,"SpawnManager::removeSpawnRegionHandling :: region  %"PRIu64"",RegionId);
+		mSpawnRegionHandlingMap.erase(it++);
+		return;
+	}
+	else
+		gLogger->log(LogManager::DEBUG,"SpawnManager::removeSpawnRegionHandling :: Region  %"PRIu64" Not Found!!!",RegionId);
+}
+
 //======================================================================================================================
 //
 //	remove a timed entry for deletion of  inactive spawn regions
@@ -671,6 +709,34 @@ bool SpawnManager::_handleGeneralObjectTimers(uint64 callTime, void* ref)
 		}
 	}
 
+	/*
+	it = mSpawnRegionHandlingMap.begin();
+	while (it != mSpawnRegionHandlingMap.end())
+	{
+		//  The timer has expired?
+		if (callTime >= ((*it).second))
+		{
+			// Is it a valid object?
+			SpawnRegion* region = dynamic_cast<SpawnRegion*>(gWorldManager->getObjectById((*it).first));
+			if (region)
+			{
+				(*it).second = callTime + 5000;
+				region->spawnArea();
+				//mLairObjectDeletionMap.erase(it++);
+			}
+			else
+			{
+				// Remove the invalid object...from this list.
+				mSpawnRegionHandlingMap.erase(it++);
+				assert(false && "SpawnManager::_handleGeneralObjectTimers spawnregion invalid" );
+			}
+		}
+		else
+		{
+			++it;
+		}
+	}
+	*/
 	return (true);
 }
 

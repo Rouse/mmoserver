@@ -1338,7 +1338,9 @@ void AttackableCreature::handleEvents(void)
 
 uint64 AttackableCreature::handleState(uint64 timeOverdue)
 {
-	uint64 waitTime = 0;
+	//waittime = 0 deletes the npc out of its handler
+	// we do not want this
+	uint64 waitTime = 1;
 
 	switch (mCombatState)
 	{
@@ -1987,7 +1989,8 @@ void AttackableCreature::respawn(void)
 	mTimeToFirstSpawn = (((uint64)gRandom->getRand() * 1000) % (uint32)(this->getRespawnDelay() + 1));
 	if(this->getFirstSpawn())
 	{
-		mTimeToFirstSpawn = (((uint64)gRandom->getRand() * 5) ) + 5;
+		mTimeToFirstSpawn = (((uint64)gRandom->getRand() * 3) ) + 1;
+		//mInitialSpawnDelay = 0;
 		this->setFirstSpawn(false);
 	}
 

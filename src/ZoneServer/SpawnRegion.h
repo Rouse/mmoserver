@@ -52,6 +52,13 @@ enum ESpawnStatus
 
 };
 
+typedef enum Npc_AI_State
+{
+	NpcIsDormant = 0,
+	NpcIsReady,
+	NpcIsActive
+};
+
 class SpawnRegion : public RegionObject
 {
 	friend class SpawnRegionFactory;
@@ -73,6 +80,7 @@ class SpawnRegion : public RegionObject
 		virtual void		onObjectLeave(Object* object);
 
 		void				spawnArea();
+		void				populateArea();
 		void				despawnArea();
 		glm::vec3			getSpawnLocation();
 		bool				checkSpawnLocation(glm::vec3 location);
