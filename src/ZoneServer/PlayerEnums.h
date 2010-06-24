@@ -61,6 +61,16 @@ enum IDSession
 	IDSessionID		= 1,
 	IDSessionPREY	= 2
 };
+//=============================================================================
+enum PlayerOffSet
+{
+	INVENTORY_OFFSET = 1,
+	MISSION_OFFSET   = 2,
+	DATAPAD_OFFSET   = 3,
+	BANK_OFFSET      = 4,
+	WEAPON_OFFSET    = 5,
+	HAIR_OFFSET      = 8
+};
 
 //=============================================================================
 
@@ -82,6 +92,7 @@ enum PlayerCustomFlag
 	PlayerCustomFlag_StructurePlacement		=	0x00000008,//custom flag
 	PlayerCustomFlag_InjuryTreatment		=	0x00000016, //custom flag
 	PlayerCustomFlag_WoundTreatment			=	0x00000032, //custom flag
+	PlayerCustomFlag_QuickHealInjuryTreatment=  0x00000064,
 };
 
 //=============================================================================

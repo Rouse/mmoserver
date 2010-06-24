@@ -40,6 +40,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "BurstRunEvent.h"
 #include "ItemDeleteEvent.h"
 #include "InjuryTreatmentEvent.h"
+#include "QuickHealInjuryTreatmentEvent.h"
 #include "WoundTreatmentEvent.h"
 #include "Common/DispatchClient.h"
 #include <map>
@@ -344,6 +345,7 @@ class PlayerObject : public CreatureObject
 		void				onItemDeleteEvent(const ItemDeleteEvent* event);
 		void				onInjuryTreatment(const InjuryTreatmentEvent* event);
 		void				onWoundTreatment(const WoundTreatmentEvent* event);
+		void				onQuickHealInjuryTreatment(const QuickHealInjuryTreatmentEvent* event);
 								 
 
 		// cloning
@@ -403,6 +405,9 @@ class PlayerObject : public CreatureObject
 		void				setProne();
 		void				setCrouched();
 
+		bool				getAcceptBandFlourishes() {return mAcceptsBandFlourishes;}
+		void				setAcceptBandFlourishes(bool b) { mAcceptsBandFlourishes = b;}
+
 	private:
 
 		void				_verifyBadges();
@@ -411,6 +416,7 @@ class PlayerObject : public CreatureObject
 		bool				mHasCamp;
 
 		Datapad*			mDataPad;
+		bool				mAcceptsBandFlourishes;
 		AudienceList		mAudienceList;
 		BadgesList			mBadgeList;
 		DenyServiceList		mDenyAudienceList;
@@ -487,6 +493,7 @@ class PlayerObject : public CreatureObject
 		uint32				mJediState;
 		uint32				mPlayerFlags;
 		uint32				mPlayerCustomFlags;
+		uint32				mLots;
 		uint16				mGroupXp;
 		uint16				mMissionIdMask;
 		int8				mBindPlanet;
@@ -494,7 +501,6 @@ class PlayerObject : public CreatureObject
 		uint8				mCsrTag;
 		uint8				mFlourishCount;
 		uint8				mHoloCharge; //thats the amount of charges our hologenerator has
-		uint8				mLots;
 		uint8				mNewPlayerExemptions;
 		bool				mAutoAttack;
 		bool				mContactListUpdatePending;

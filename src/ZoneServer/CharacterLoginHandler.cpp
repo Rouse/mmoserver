@@ -270,13 +270,12 @@ void CharacterLoginHandler::handleDispatchMessage(uint32 opcode, Message* messag
 			// send our message of the day
 			string moT = "welcome to swgAnh";
 			moT	= (int8*)((gWorldConfig->getConfiguration<std::string>("motD",moT.getAnsi())).c_str());
-			//moT = gWorldConfig->getConfiguration("motD",moT.getAnsi());
 
 			moT.convert(BSTRType_Unicode16);
 			if(player && !(player->getMotdReceived()) && moT.getLength())
 			{
 				player->setMotdReceived(true);
-				gMessageLib->sendSystemMessage(player,moT);
+        gMessageLib->sendSystemMessage(player,moT.getUnicode16());
 			}
 
 			// Send newbie info.

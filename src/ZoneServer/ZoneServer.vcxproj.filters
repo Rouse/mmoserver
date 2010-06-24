@@ -1459,7 +1459,17 @@
     <ClInclude Include="WoundTreatmentEvent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+<<<<<<< HEAD
     <ClInclude Include="SpawnManager.h">
+=======
+    <ClInclude Include="quickHealInjuryEvent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="QuickHealInjuryTreatmentEvent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OCStructureHandlers.h">
+>>>>>>> origin/develop
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

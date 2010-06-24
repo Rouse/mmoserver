@@ -302,7 +302,7 @@ void PlayerObject::onSample(const SampleEvent* event)
 
 	if(ratio <= 0.0f)
 	{
-		gMessageLib->sendSystemMessage(this,L"","survey","density_below_threshold","","",resName);
+    gMessageLib->sendSystemMessage(this,L"","survey","density_below_threshold","","",resName.getUnicode16());
 		getSampleData()->mPendingSample = false;
 		return;
 
@@ -328,7 +328,7 @@ void PlayerObject::onSample(const SampleEvent* event)
 			// FAILED ATTEMPT
 			sampleAmount = 0;
 			successSample =false;
-			gMessageLib->sendSystemMessage(this,L"","survey","sample_failed","","",resName);
+      gMessageLib->sendSystemMessage(this,L"","survey","sample_failed","","",resName.getUnicode16());
 		}
 
 		else if((dieRoll > 91)&&(dieRoll < 96))
@@ -404,7 +404,7 @@ void PlayerObject::onSample(const SampleEvent* event)
 				//CRITICAL SUCCESS
 					sampleAmount = (static_cast<uint32>(2*maxSample));
                     sampleAmount = std::max(sampleAmount, static_cast<uint>(1));
-					gMessageLib->sendSystemMessage(this,L"","survey","critical_success","","",resName);
+                    gMessageLib->sendSystemMessage(this,L"","survey","critical_success","","",resName.getUnicode16());
 				}
 			} 
 			else 
@@ -412,13 +412,13 @@ void PlayerObject::onSample(const SampleEvent* event)
 				//NORMAL SUCCESS
 				sampleAmount = (static_cast<uint32>(floor(static_cast<float>((maxSample-minSample)*(dieRoll-failureChance)/(90-failureChance)+minSample))));         // floor == round down, so 9.9 == 9
                 sampleAmount = std::max(sampleAmount, static_cast<uint>(1));
-				gMessageLib->sendSystemMessage(this,L"","survey","sample_located","","",resName,sampleAmount);
+                gMessageLib->sendSystemMessage(this,L"","survey","sample_located","","",resName.getUnicode16(),sampleAmount);
 			}
 		}
 	}
 	else
 	{
-		gMessageLib->sendSystemMessage(this,L"","survey","density_below_threshold","","",resName);
+    gMessageLib->sendSystemMessage(this,L"","survey","density_below_threshold","","",resName.getUnicode16());
 		successSample = false;
 		resAvailable = false;
 	}
@@ -644,8 +644,8 @@ void PlayerObject::onItemDeleteEvent(const ItemDeleteEvent* event)
 		return;
 	}
 	
-	Inventory* inventory = dynamic_cast<Inventory*>(this->getEquipManager()->getEquippedObject(CreatureEquipSlot_Inventory));
-	inventory->deleteObject(item);
+	TangibleObject* tO = dynamic_cast<TangibleObject*>(gWorldManager->getObjectById(item->getParentId()));
+	tO->deleteObject(item);
 		
 }
 
@@ -667,6 +667,26 @@ void PlayerObject::onInjuryTreatment(const InjuryTreatmentEvent* event)
 	else
 	{
 		mObjectController.addEvent(new InjuryTreatmentEvent(t), t-now);
+	}
+}
+//=============================================================================
+// this event manages quickheal injury treatment cooldowns.
+//
+void PlayerObject::onQuickHealInjuryTreatment(const QuickHealInjuryTreatmentEvent* event)
+{
+	uint64 now = gWorldManager->GetCurrentGlobalTick();
+	uint64 t = event->getQuickHealInjuryTreatmentTime();
+
+	if(now > t)
+	{
+		this->togglePlayerCustomFlagOff(PlayerCustomFlag_QuickHealInjuryTreatment);
+		gMessageLib->sendSystemMessage(this, L"", "healing_response", "healing_response_58");
+	}
+	
+	//have to call once more so we can get back here...
+	else
+	{
+		mObjectController.addEvent(new QuickHealInjuryTreatmentEvent(t), t-now);
 	}
 }
 

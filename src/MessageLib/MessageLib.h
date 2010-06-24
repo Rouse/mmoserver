@@ -150,10 +150,10 @@ public:
 	
 	bool				sendSysMsg(PlayerObject* playerObject,string mainFile,string mainVar,Object* to= NULL, Object* tt = NULL, Object* tu = NULL, int32 di = 0);
 	
-	bool				sendSystemMessage(PlayerObject* playerObject,string customMessage = L"",string mainFile = "",
-											string mainVar = "",string toFile = "",string toVar = "",string toCustom = L"",int32 di = 0,
-											string ttFile = "",string ttVar = "",string ttCustom = L"",uint64 ttId = 0,uint64 toId = 0,uint64 tuId = 0,
-											string tuFile = "",string tuVar = "",string tuCustom = L"");
+	bool				sendSystemMessage(PlayerObject* playerObject, std::wstring customMessage = L"", std::string mainFile = "",
+											std::string mainVar = "",std::string toFile = "",std::string toVar = "", std::wstring toCustom = L"",int32 di = 0,
+											std::string ttFile = "",std::string ttVar = "",std::wstring ttCustom = L"",uint64 ttId = 0,uint64 toId = 0,uint64 tuId = 0,
+											std::string tuFile = "",std::string tuVar = "",std::wstring tuCustom = L"");
 
 	bool				sendSystemMessageInRange(PlayerObject* playerObject, bool toSelf, string customMessage = L"",string mainFile = "",
 											string mainVar = "",string toFile = "",string toVar = "",string toCustom = L"",int32 di = 0,
@@ -241,6 +241,8 @@ public:
 	void				sendSitOnObject(CreatureObject* creatureObject);
 	void				sendDataTransformWithParent0B(Object* object);
 	void				sendDataTransform0B(Object* object);
+	void				sendDataTransform023(Object* object);
+	void				sendDataTransform071(Object* object);
 
 	// position updates for tutorial
 	void				sendDataTransform(Object* object, PlayerObject* player);

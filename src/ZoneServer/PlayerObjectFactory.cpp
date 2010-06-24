@@ -345,7 +345,7 @@ void PlayerObjectFactory::handleDatabaseJobComplete(void* ref,DatabaseResult* re
 			mObjectLoadMap.insert(std::make_pair(playerObject->getId(),ilc));
 
 			// request inventory
-			mInventoryFactory->requestObject(this,playerObject->mId + 1,TanGroup_Inventory,TanType_CharInventory,asyncContainer->mClient);
+			mInventoryFactory->requestObject(this,playerObject->mId + INVENTORY_OFFSET,TanGroup_Inventory,TanType_CharInventory,asyncContainer->mClient);
 
 		}
 		break;
@@ -373,7 +373,7 @@ void PlayerObjectFactory::handleDatabaseJobComplete(void* ref,DatabaseResult* re
 
 			// get the datapad here to avoid a race condition
 			// request datapad
-			mDatapadFactory->requestObject(this,playerObject->mId + 3,TanGroup_Datapad,TanType_CharacterDatapad,asyncContainer->mClient);
+			mDatapadFactory->requestObject(this,playerObject->mId + DATAPAD_OFFSET,TanGroup_Datapad,TanType_CharacterDatapad,asyncContainer->mClient);
 		}
 		break;
 
@@ -422,7 +422,7 @@ void PlayerObjectFactory::handleDatabaseJobComplete(void* ref,DatabaseResult* re
 			}
 
 			result->GetNextRow(binding,&lotCount);
-			uint8 maxLots = gWorldConfig->getConfiguration("Player_Max_Lots",(uint8)10);
+			uint32 maxLots = gWorldConfig->getConfiguration<uint32>("Player_Max_Lots",(uint32)10);
 
 			maxLots -= static_cast<uint8>(lotCount);
 			playerObject->setLots((uint8)maxLots);
@@ -502,7 +502,7 @@ void PlayerObjectFactory::requestObject(ObjectFactoryCallback* ofCallback,uint64
 		" INNER JOIN character_matchmaking ON (characters.id = character_matchmaking.character_id)"
 		" WHERE"
 
-		" (characters.id = %"PRIu64");",id + 4,id);
+		" (characters.id = %"PRIu64");",id + BANK_OFFSET,id);
 
 	mDatabase->ExecuteSqlAsync(this,asyncContainer,sql);
 }
@@ -517,6 +517,7 @@ PlayerObject* PlayerObjectFactory::_createPlayer(DatabaseResult* result)
 	Bank*			playerBank		= new Bank();
 	Weapon*			playerWeapon	= new Weapon();
 
+	playerBank->setId(playerObject->getId()+BANK_OFFSET);
 	playerBank->setParent(playerObject);
 
 	uint64 count = result->getRowCount();
@@ -557,7 +558,7 @@ PlayerObject* PlayerObjectFactory::_createPlayer(DatabaseResult* result)
 	{
 		int8 tmpHair[128];
 		sprintf(tmpHair,"object/tangible/hair/%s/shared_%s",playerObject->mSpecies.getAnsi(),&playerHair->mModel.getAnsi()[22 + playerObject->mSpecies.getLength()]);
-		playerHair->setId(playerObject->mId + 8);
+		playerHair->setId(playerObject->mId + HAIR_OFFSET);
 		playerHair->setParentId(playerObject->mId);
 		playerHair->setModelString(tmpHair);
 		playerHair->setTangibleGroup(TanGroup_Hair);
@@ -578,13 +579,13 @@ PlayerObject* PlayerObjectFactory::_createPlayer(DatabaseResult* result)
 	}
 
 	// mission bag
-	playerMissionBag = new MissionBag(playerObject->mId + 2,playerObject,"object/tangible/mission_bag/shared_mission_bag.iff","item_n","mission_bag");
+	playerMissionBag = new MissionBag(playerObject->mId + MISSION_OFFSET,playerObject,"object/tangible/mission_bag/shared_mission_bag.iff","item_n","mission_bag");
 	playerMissionBag->setEquipSlotMask(CreatureEquipSlot_Mission);
 
 	playerObject->mEquipManager.addEquippedObject(CreatureEquipSlot_Mission,playerMissionBag);
 
 	// bank
-	playerBank->setId(playerObject->mId + 4);
+	playerBank->setId(playerObject->mId + BANK_OFFSET);
 	playerBank->setParentId(playerObject->mId);
 	playerBank->setModelString("object/tangible/bank/shared_character_bank.iff");
 	playerBank->setName("bank");
@@ -594,9 +595,10 @@ PlayerObject* PlayerObjectFactory::_createPlayer(DatabaseResult* result)
 	playerBank->setEquipSlotMask(CreatureEquipSlot_Bank);
 
 	playerObject->mEquipManager.addEquippedObject(CreatureEquipSlot_Bank,playerBank);
+	gWorldManager->addObject(playerBank,true);
 
 	// weapon
-	playerWeapon->setId(playerObject->mId + 5);
+	playerWeapon->setId(playerObject->mId + WEAPON_OFFSET);
 	playerWeapon->setParentId(playerObject->mId);
 	playerWeapon->setModelString("object/weapon/melee/unarmed/shared_unarmed_default_player.iff");
 	playerWeapon->setGroup(WeaponGroup_Unarmed);

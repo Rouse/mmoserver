@@ -29,8 +29,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <cstdarg>
 #include <stdarg.h>
 #include <stdio.h>
-#include <time.h>
 #include <vector>
+
+#include <fstream>
+#include <iomanip>
+
+#include "Utils/clock.h"
 
 LogManager* LogManager::mSingleton;
 
@@ -66,12 +70,8 @@ bool LogManager::setupConsoleLogging(LOG_PRIORITY min_priority)
 bool LogManager::setupFileLogging(LOG_PRIORITY min_priority, std::string filename)
 {
 	mMinPriorities[1] = min_priority;
-	FILE* tempFile = fopen(filename.c_str(), "w");
 
-	if(!tempFile)
-		return false;
-
-	mOutputFile = tempFile;
+	mFileName = filename;
 
 	return true;
 }
@@ -79,6 +79,15 @@ bool LogManager::setupFileLogging(LOG_PRIORITY min_priority, std::string filenam
 void LogManager::_LoggerThread()
 {
 	std::vector<LOG_ENTRY*> mTempEntries;
+
+	std::ofstream mOutputFile;
+
+	mOutputFile.open(mFileName, std::ios_base::out);
+
+	if(!mOutputFile.is_open())
+	{
+		this->log(EMERGENCY, "File Log Setup Error.");
+	}
 
 	char* priority_strings[] = {"EMER", "ALRT", "CRIT", "ERRO", "WARN", "NOTI", "INFO", "DEBG"};
 
@@ -97,32 +106,45 @@ void LogManager::_LoggerThread()
 
 		std::vector<LOG_ENTRY*>::iterator end = mTempEntries.end();
 
-		struct tm * t;
+		struct tm t;
 		time_t te = time(NULL);
-		t = localtime (&te);
+		localtime_r(&te, &t);
 
 		for(std::vector<LOG_ENTRY*>::iterator it=mTempEntries.begin(); it != end; it++)
 		{
 			if((*it)->mChannels & LOG_CHANNEL_CONSOLE && ((*it)->mPriority <= mMinPriorities[0]))
 			{
 				if(!(*it)->mContinuation)
-					printf("[%02d:%02d:%02d]<%s> ",t->tm_hour,t->tm_min,t->tm_sec, priority_strings[(int)(*it)->mPriority - 1]);
+					printf("[%02d:%02d:%02d] [%s] ",t.tm_hour,t.tm_min,t.tm_sec, priority_strings[(int)(*it)->mPriority - 1]);
 				else
-					printf("                 ");
+					printf("                  ");
 
 				printf("%s\n", (*it)->mMessage.c_str());
 			}
 			
 			if((*it)->mChannels & LOG_CHANNEL_FILE && ((*it)->mPriority <= mMinPriorities[1]))
 			{
-				if(mOutputFile)
+				if(mOutputFile.is_open())
 				{
 					if(!(*it)->mContinuation)
-						fprintf(mOutputFile, "[%02d:%02d:%02d]<%s> ",t->tm_hour,t->tm_min,t->tm_sec, priority_strings[(int)(*it)->mPriority - 1]);
+					{
+						mOutputFile << "[" << std::setw(2) << t.tm_hour;
+						mOutputFile << ":" << std::setw(2) << t.tm_min;
+						mOutputFile << ":" << std::setw(2) << t.tm_sec;
+						mOutputFile << "] [" << priority_strings[(int)(*it)->mPriority - 1] << "] ";
+
+						//fprintf(mOutputFile, "[%02d:%02d:%02d] [%s] ",t.tm_hour,t.tm_min,t.tm_sec, priority_strings[(int)(*it)->mPriority - 1]);
+					}
 					else
-						fprintf(mOutputFile, "                 ");
+					{
+						mOutputFile << "                  ";
+						//fprintf(mOutputFile, "                  ");
+					}
 					
-					fprintf(mOutputFile, "%s\n", (*it)->mMessage.c_str());
+					mOutputFile << (*it)->mMessage.c_str() << std::endl;
+					mOutputFile.flush();
+					//fprintf(mOutputFile, "%s\n", (*it)->mMessage.c_str());
+					//fflush(mOutputFile);
 				}
 			}
 

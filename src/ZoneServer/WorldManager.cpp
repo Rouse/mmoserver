@@ -1197,10 +1197,6 @@ void WorldManager::ScriptRegisterEvent(void* script,std::string eventFunction)
 
 void WorldManager::	zoneSystemMessage(std::string message)
 {
-	string msg = (int8*)message.c_str();
-
-	msg.convert(BSTRType_Unicode16);
-
 	PlayerAccMap::iterator it = mPlayerAccMap.begin();
 
 	while(it != mPlayerAccMap.end())
@@ -1209,6 +1205,7 @@ void WorldManager::	zoneSystemMessage(std::string message)
 
 		if(player->isConnected())
 		{
+      std::wstring msg(message.begin(), message.end());
 			gMessageLib->sendSystemMessage((PlayerObject*)player,msg);
 		}
 

@@ -286,7 +286,8 @@ void  Trade::processTradeListPostTransaction()
 	Inventory*				inventory			= dynamic_cast<Inventory*>(getPlayerObject()->getEquipManager()->getEquippedObject(CreatureEquipSlot_Inventory));
 
 	//Tradepartners Inventory
-	Inventory*				partnerInventory	= dynamic_cast<Inventory*>((*it)->getNewOwner()->getEquipManager()->getEquippedObject(CreatureEquipSlot_Inventory));
+	PlayerObject*			TradePartner		= dynamic_cast<PlayerObject*>(gWorldManager->getObjectById(getPlayerObject()->getTradePartner()));
+	Inventory*				partnerInventory	= dynamic_cast<Inventory*>(TradePartner->getEquipManager()->getEquippedObject(CreatureEquipSlot_Inventory));
 
 	while(it != mItemTradeList.end())
 	{
@@ -301,6 +302,14 @@ void  Trade::processTradeListPostTransaction()
 
 		//the item could be in a backpack or in a different container - get it out
 		TangibleObject* container = dynamic_cast<TangibleObject*>(gWorldManager->getObjectById((*it)->getObject()->getParentId()));
+		
+		if(!container)
+		{
+			//please note, that the worldmanagers ObjectList does not contain inventories.
+			//equipped items should be unequipped by this time
+			container = inventory;
+		}
+		
 		container->deleteObject((*it)->getObject());
 
 		//create in our tradepartners Inventory

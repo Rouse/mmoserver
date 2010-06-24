@@ -450,7 +450,7 @@ void ObjectController::_handlestartdance(uint64 targetId,Message* message,Object
 
 	if(performer->checkStatesEither(CreatureState_Combat | CreatureState_Tumbling | CreatureState_Swimming | CreatureState_Crafting))
 	{
-		gMessageLib->sendSystemMessage(performer,L"error_message", "wrong_state");
+		gMessageLib->sendSystemMessage(performer,L"", "error_message", "wrong_state");
 		return;
 	}
 
@@ -534,7 +534,7 @@ void ObjectController::_handlestartmusic(uint64 targetId,Message* message,Object
 
 	if(performer->checkStatesEither(CreatureState_Combat | CreatureState_Tumbling | CreatureState_Swimming))
 	{
-		gMessageLib->sendSystemMessage(performer,L"error_message", "wrong_state");
+		gMessageLib->sendSystemMessage(performer,L"", "error_message", "wrong_state");
 		return;
 	}
 
@@ -610,6 +610,13 @@ void ObjectController::_handleStopBand(uint64 targetId,Message* message,ObjectCo
 {
 	PlayerObject*	performer	= dynamic_cast<PlayerObject*>(mObject);
 
+	if(performer->getGroupId() == 0)
+	{
+		gMessageLib->sendSystemMessage(performer,L"You are not in a band.");
+		return;
+
+	}
+
 	gEntertainerManager->StopBand(performer);
 }
 
@@ -623,7 +630,7 @@ void ObjectController::_handleStartBand(uint64 targetId,Message* message,ObjectC
 
 	if(performer->checkStatesEither(CreatureState_Combat | CreatureState_Tumbling | CreatureState_Swimming))
 	{
-		gMessageLib->sendSystemMessage(performer,L"error_message", "wrong_state");
+		gMessageLib->sendSystemMessage(performer,L"", "error_message", "wrong_state");
 		return;
 	}
 
@@ -658,6 +665,13 @@ void ObjectController::_handleBandFlourish(uint64 targetId,Message* message,Obje
 	PlayerObject*	entertainer	= dynamic_cast<PlayerObject*>(mObject);
 	//gMessageLib->sendSystemMessage(performer,L"","performance","music_stop_band_self");
 
+	if(entertainer->getGroupId() == 0)
+	{
+		gMessageLib->sendSystemMessage(entertainer,L"You are not in a band.");
+		return;
+
+	}
+
 	uint8 flourishMax = 8;
 	//are we performing???
 	if(entertainer->getPerformingState() == PlayerPerformance_None)
@@ -673,17 +687,51 @@ void ObjectController::_handleBandFlourish(uint64 targetId,Message* message,Obje
 	message->getStringUnicode16(dataStr);
 	//dataStr.convert(BSTRType_ANSI);
 	//printf(" flourish : %s",dataStr.getAnsi());
+	wchar_t temp[64];
 
-	uint32 FlourishId;
-	swscanf(dataStr.getUnicode16(),L"%u",&FlourishId);
+	swscanf(dataStr.getUnicode16(),L"%s",&temp);
 
-	if((FlourishId < 1)||(FlourishId > flourishMax))
+	if(wcsncmp(temp, L"on", sizeof(temp)) == 0)
 	{
-		gMessageLib->sendSystemMessage(entertainer,L"","performance","flourish_not_valid");
-		return;
-	}
+		if(entertainer->checkSkill(10))
+		{
+			if(entertainer->getAcceptBandFlourishes() == false)
+			{
+				entertainer->setAcceptBandFlourishes(true);
 
-	gEntertainerManager->BandFlourish(entertainer, FlourishId);
+				gMessageLib->sendSystemMessage(entertainer,L"","performance","band_flourish_on");
+			}
+			else
+				gMessageLib->sendSystemMessage(entertainer,L"","performance","band_flourish_status_on");
+		}
+	}
+	else if(wcsncmp(temp, L"off", sizeof(temp)) == 0)
+	{
+		if(entertainer->checkSkill(10))
+		{
+			if(entertainer->getAcceptBandFlourishes() == true)
+			{
+				entertainer->setAcceptBandFlourishes(false);
+
+				gMessageLib->sendSystemMessage(entertainer,L"","performance","band_flourish_off");
+			}
+			else
+				gMessageLib->sendSystemMessage(entertainer,L"","performance","band_flourish_status_off");
+		}
+	}
+	else
+	{
+		uint32 FlourishId;
+		swscanf(dataStr.getUnicode16(), L"%d", &FlourishId);
+
+		if((FlourishId < 1)||(FlourishId > flourishMax))
+		{
+			gMessageLib->sendSystemMessage(entertainer,L"","performance","flourish_not_valid");
+			return;
+		}
+
+		gEntertainerManager->BandFlourish(entertainer, FlourishId);
+	}
 }
 
 //=============================================================================================================================
@@ -861,7 +909,7 @@ void ObjectController::handleImageDesignChangeMessage(Message* message,uint64 ta
 	
 	if((imageDesigner == messageGenerator) && designerCommit)
 	{
-		uint32 idTimer	= gWorldConfig->getConfiguration("Player_Timer_IDSessionTimeOut",(uint32)60000);
+		uint32 idTimer	= gWorldConfig->getConfiguration<uint32>("Player_Timer_IDSessionTimeOut",(uint32)60000);
 		messageGenerator->setImageDesignerTaskId(gWorldManager->addImageDesignerToProcess(messageGenerator,idTimer));
 		gLogger->log(LogManager::DEBUG,"Added ID Tick Control !!!");
 	}

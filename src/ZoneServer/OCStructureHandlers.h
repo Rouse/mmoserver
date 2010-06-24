@@ -25,45 +25,25 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ---------------------------------------------------------------------------------------
 */
 
-#ifndef ANH_ZONESERVER_BADGEREGION_H
-#define ANH_ZONESERVER_BADGEREGION_H
+#ifndef ZONESERVER_OCSTRUCTUREHANDLERS_H_
+#define ZONESERVER_OCSTRUCTUREHANDLERS_H_
 
-#include "RegionObject.h"
-#include "MathLib/Rectangle.h"
-#include "Utils/typedefs.h"
+class Message;
+class Object;
+class ObjectControllerCmdProperties;
 
-//=============================================================================
+/// This command is used to move items about a structure.
+/**
+ * This command is invoked by the client to move items around in a structure.
+ *
+ * The client enters the message in the following format:
+ *   /moveFurniture <FORWARD/BACK/UP/DOWN> <distance>
+ *
+ * @param object The object moving the furniture (always a PlayerObject).
+ * @param target The targeted item is the one being moved.
+ * @param message The message from the client requesting this command.
+ * @param cmd_properties Contextual information for use during processing this command.
+ */
+bool HandleMoveFurniture(Object* object, Object* target, Message* message, ObjectControllerCmdProperties* cmdProperties);
 
-class ZoneTree;
-class PlayerObject;
-class QTRegion;
-
-//=============================================================================
-
-class BadgeRegion : public RegionObject
-{
-	friend class BadgeRegionFactory;
-
-	public:
-
-		BadgeRegion();
-		virtual ~BadgeRegion();
-
-		uint32			getBadgeId(){ return mBadgeId; }
-		void			setBadgeId(uint32 id){ mBadgeId = id; }
-
-		virtual void	update();
-
-	protected:
-
-		uint32				mBadgeId;
-		ZoneTree*			mSI;
-		QTRegion*			mQTRegion;
-		Anh_Math::Rectangle mQueryRect;
-};
-
-
-#endif
-
-
-
+#endif  // ZONESERVER_OCSTRUCTUREHANDLERS_H_

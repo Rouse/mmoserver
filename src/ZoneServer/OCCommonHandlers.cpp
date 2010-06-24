@@ -83,7 +83,7 @@ void ObjectController::_handleBoardTransport(uint64 targetId,Message* message,Ob
 
 	if(playerObject->getPosture() == CreaturePosture_SkillAnimating)
 	{
-		gMessageLib->sendSystemMessage(playerObject,L"error_message", "wrong_state");
+		gMessageLib->sendSystemMessage(playerObject,L"", "error_message", "wrong_state");
 		return;
 	}
 
@@ -453,12 +453,13 @@ void ObjectController::_handleTransferItem(uint64 targetId,Message* message,Obje
 bool ObjectController::checkContainingContainer(uint64 containingContainer, uint64 playerId)
 {
 	ObjectContainer* container = dynamic_cast<ObjectContainer*>(gWorldManager->getObjectById(containingContainer));
+	PlayerObject*	 playerObject = dynamic_cast<PlayerObject*>(gWorldManager->getObjectById(playerId));
 	
 	if(!container)
 	{
 		//it might be our inventory or the inventory of a creature were looting
 		//PlayerObject* player = dynamic_cast<PlayerObject*>(gWorldManager->getObjectById(playerId));
-		if(containingContainer == (playerId+1))
+		if(containingContainer == (playerId+INVENTORY_OFFSET))
 		{
 			//its our inventory ... - return true
 			return true;
@@ -494,6 +495,7 @@ bool ObjectController::checkContainingContainer(uint64 containingContainer, uint
 		{
 			return true;
 		}
+		gMessageLib->sendSystemMessage(playerObject, L"", "player_structure", "not_admin");
 		return false;
 	}
 
@@ -514,6 +516,8 @@ bool ObjectController::checkContainingContainer(uint64 containingContainer, uint
 					}
 				}
 			}
+			else
+				gMessageLib->sendSystemMessage(playerObject, L"", "player_structure", "not_admin");
 		}
 		return false;
 	}
@@ -1116,11 +1120,11 @@ void ObjectController::_handlePurchaseTicket(uint64 targetId,Message* message,Ob
 	uint16			elements;
 
 	
-	float		purchaseRange = gWorldConfig->getConfiguration("Player_TicketTerminalAccess_Distance",(float)10.0);
+	float		purchaseRange = gWorldConfig->getConfiguration<float>("Player_TicketTerminalAccess_Distance",(float)10.0);
 
 	if(playerObject->getPosture() == CreaturePosture_SkillAnimating)
 	{
-		gMessageLib->sendSystemMessage(playerObject,L"error_message", "wrong_state");
+		gMessageLib->sendSystemMessage(playerObject,L"", "error_message", "wrong_state");
 		return;
 	}
 	
@@ -1480,16 +1484,24 @@ void ObjectController::handleObjectMenuRequest(Message* message)
     //just implement this virtual function for items as we need just one central point instead
 	//of the same code over and over for all items
 
+	CellObject* itemCell = dynamic_cast<CellObject*>(gWorldManager->getObjectById(requestedObject->getParentId()));
+
 	Item* item = dynamic_cast<Item*>(requestedObject);
-	ResourceContainer* rc = dynamic_cast<ResourceContainer*>(requestedObject);
-	if(item && requestedObject->getParentId())
+	ResourceContainer* rC = dynamic_cast<ResourceContainer*>(requestedObject);
+	TangibleObject* tO = dynamic_cast<TangibleObject*>(requestedObject);
+
+	//only display that menu when *we* and the item are in the same structure
+	if((rC || item) && itemCell && (!tO->getStatic()))
 	{
-		if(CellObject* cell = dynamic_cast<CellObject*>(gWorldManager->getObjectById(requestedObject->getParentId())))
+		CellObject* playerCell = dynamic_cast<CellObject*>(gWorldManager->getObjectById(playerObject->getParentId()));
+		if(playerCell && (playerCell->getParentId() == itemCell->getParentId()))
 		{
-			requestedObject->prepareCustomRadialMenuInCell(playerObject,static_cast<uint8>(itemCount));
+			PlayerStructure* pS = dynamic_cast<PlayerStructure*>(gWorldManager->getObjectById(playerCell->getParentId()));
+			if(pS)
+				requestedObject->prepareCustomRadialMenuInCell(playerObject,static_cast<uint8>(itemCount));
 		}
 	}
-
+	/*
 	if(rc && requestedObject->getParentId())
 	{
 		if(CellObject* cell = dynamic_cast<CellObject*>(gWorldManager->getObjectById(requestedObject->getParentId())))
@@ -1497,7 +1509,7 @@ void ObjectController::handleObjectMenuRequest(Message* message)
 			requestedObject->prepareCustomRadialMenuInCell(playerObject,static_cast<uint8>(itemCount));
 		}
 	}
-
+	*/
 	//delete the radials after every use or provide every object with set rules when to delete it ?
 
 	if(!requestedObject->getRadialMenu())
@@ -1634,8 +1646,8 @@ void ObjectController::_handleClientLogout(uint64 targetId,Message* message,Obje
 	//gMessageLib->sendPostureAndStateUpdate(player);
 	//gMessageLib->sendSelfPostureUpdate(player);
 
-	uint32 logout		= gWorldConfig->getConfiguration("Player_LogOut_Time",(uint32)30);
-	uint32 logoutSpacer = gWorldConfig->getConfiguration("Player_LogOut_Spacer",(uint32)5);
+	uint32 logout		= gWorldConfig->getConfiguration<uint32>("Player_LogOut_Time",(uint32)30);
+	uint32 logoutSpacer = gWorldConfig->getConfiguration<uint32>("Player_LogOut_Spacer",(uint32)5);
 
 	if(logoutSpacer > logout)
 		logoutSpacer = logout;
@@ -1675,13 +1687,13 @@ void ObjectController::_BurstRun(uint64 targetId,Message* message,ObjectControll
 
 	if(player->checkPlayerCustomFlag(PlayerCustomFlag_BurstRunCD))
 	{
-		gMessageLib->sendSystemMessage(player,L"","combat_effects","burst_run_tired");
+		gMessageLib->sendSystemMessage(player,L"","combat_effects","burst_run_wait");
 		return;
 	}
 
-	uint32 actioncost = gWorldConfig->getConfiguration("Player_BurstRun_Action",(uint32)300);
-	uint32 healthcost = gWorldConfig->getConfiguration("Player_BurstRun_Health",(uint32)300);
-	uint32 mindcost	  = gWorldConfig->getConfiguration("Player_BurstRun_Mind",(uint32)0);
+	uint32 actioncost = gWorldConfig->getConfiguration<uint32>("Player_BurstRun_Action",(uint32)300);
+	uint32 healthcost = gWorldConfig->getConfiguration<uint32>("Player_BurstRun_Health",(uint32)300);
+	uint32 mindcost	  = gWorldConfig->getConfiguration<uint32>("Player_BurstRun_Mind",(uint32)0);
 
 	if(!player->getHam()->checkMainPools(healthcost,actioncost,mindcost))
 	{
@@ -1698,8 +1710,8 @@ void ObjectController::_BurstRun(uint64 targetId,Message* message,ObjectControll
 
 	uint64 now = Anh_Utils::Clock::getSingleton()->getLocalTime();
 
-	uint32 br_length		= gWorldConfig->getConfiguration("Player_BurstRun_Time",(uint32)60);
-	uint32 br_coolD			= gWorldConfig->getConfiguration("Player_BurstRun_CoolDown",(uint32)600);
+	uint32 br_length		= gWorldConfig->getConfiguration<uint32>("Player_BurstRun_Time",(uint32)60);
+	uint32 br_coolD			= gWorldConfig->getConfiguration<uint32>("Player_BurstRun_CoolDown",(uint32)600);
 
 	uint32 t = std::min<uint32>(br_length,  br_coolD);
 

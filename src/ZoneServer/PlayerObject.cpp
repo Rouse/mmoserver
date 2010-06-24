@@ -134,8 +134,9 @@ PlayerObject::PlayerObject()
 	registerEventFunction(this,&PlayerObject::onItemDeleteEvent);
 	registerEventFunction(this,&PlayerObject::onInjuryTreatment);
 	registerEventFunction(this,&PlayerObject::onWoundTreatment);
+	registerEventFunction(this,&PlayerObject::onQuickHealInjuryTreatment);
 	
-	mLots = gWorldConfig->getConfiguration("Player_Max_Lots",(uint8)10);
+	mLots = gWorldConfig->getConfiguration<uint32>("Player_Max_Lots",(uint32)10);
 
 	mPermissionId = 0;
 
@@ -169,21 +170,10 @@ PlayerObject::~PlayerObject()
 	// make sure we stop entertaining if we are an entertainer
 	gEntertainerManager->stopEntertaining(this);
 
-	// remove any timers we got running
-	gWorldManager->removeObjControllerToProcess(mObjectController.getTaskId());
-	gWorldManager->removeCreatureHamToProcess(mHam.getTaskId());
-	gWorldManager->removeCreatureStomachToProcess(mStomach->mDrinkTaskId);
-	gWorldManager->removeCreatureStomachToProcess(mStomach->mFoodTaskId);
 	mObjectController.setTaskId(0);
 	mHam.setTaskId(0);
 	mStomach->mFoodTaskId = 0;
 	mStomach->mDrinkTaskId = 0;
-
-	// remove player from movement update timer.
-	gWorldManager->removePlayerMovementUpdateTime(this);
-
-	// remove us from the player map
-	gWorldManager->removePlayerfromAccountMap(mId);
 
 	// delete currently placed instrument
 	if(mPlacedInstrument)
@@ -194,23 +184,6 @@ PlayerObject::~PlayerObject()
 		}
 	}
 
-	// remove us from active regions we are in
-	ObjectSet regions;
-	gWorldManager->getSI()->getObjectsInRange(this,&regions,ObjType_Region,20);
-
-	ObjectSet::iterator objListIt = regions.begin();
-
-	while(objListIt != regions.end())
-	{
-		RegionObject* region = dynamic_cast<RegionObject*>(*objListIt);
-
-		if(region->getActive())
-		{
-			region->onObjectLeave(this);
-		}
-
-		++objListIt;
-	}
 
 	// make sure we are deleted out of entertainer Ticks when entertained
 	if(mEntertainerWatchToId)
@@ -235,13 +208,6 @@ PlayerObject::~PlayerObject()
 	this->toggleStateOff(CreatureState_Crafting);
 	this->setCraftingStage(0);
 	this->setExperimentationFlag(0);
-
-	// remove the player out of his group - if any
-	if(GroupObject* group = gGroupManager->getGroupObject(mGroupId))
-	{
-		group->removePlayer(mId);
-		
-	}
 
 	// can't zone or logout while in combat
 	this->toggleStateOff(CreatureState_Combat);
@@ -269,53 +235,7 @@ PlayerObject::~PlayerObject()
 	}		 
 	mDuelList.clear();
 
-	// move to the nearest cloning center, if we are incapped or dead
-	if(mPosture == CreaturePosture_Incapacitated
-	|| mPosture == CreaturePosture_Dead)
-	{
-		// bring up the clone selection window
-		ObjectSet						inRangeBuildings;
-		BStringVector					buildingNames;
-		std::vector<BuildingObject*>	buildings;
-		BuildingObject*					nearestBuilding = NULL;
-
-		gWorldManager->getSI()->getObjectsInRange(this,&inRangeBuildings,ObjType_Building,8192);
-
-		ObjectSet::iterator buildingIt = inRangeBuildings.begin();
-
-		while(buildingIt != inRangeBuildings.end())
-		{
-			BuildingObject* building = dynamic_cast<BuildingObject*>(*buildingIt);
-
-			// TODO: This code is not working as intended if player dies inside, since buildings use world coordinates and players inside have cell coordinates.
-			// Tranformation is needed before the correct distance can be calculated.
-			if(building && building->getBuildingFamily() == BuildingFamily_Cloning_Facility)
-			{
-				if(!nearestBuilding
-                    || (nearestBuilding != building && (glm::distance(mPosition, building->mPosition) < glm::distance(mPosition, nearestBuilding->mPosition))))
-				{
-					nearestBuilding = building;
-				}
-			}
-
-			++buildingIt;
-		}
-
-		if(nearestBuilding)
-		{
-			if(nearestBuilding->getSpawnPoints()->size())
-			{
-				if(SpawnPoint* sp = nearestBuilding->getRandomSpawnPoint())
-				{
-					// update the database with the new values
-					gWorldManager->getDatabase()->ExecuteSqlAsync(0,0,"UPDATE characters SET parent_id=%"PRIu64",oX=%f,oY=%f,oZ=%f,oW=%f,x=%f,y=%f,z=%f WHERE id=%"PRIu64"",sp->mCellId
-						,sp->mDirection.x,sp->mDirection.y,sp->mDirection.z,sp->mDirection.w
-						,sp->mPosition.x,sp->mPosition.y,sp->mPosition.z
-						,mId);
-				}
-			}
-		}
-	}
+	
 
 	// update defender lists
 	ObjectIDList::iterator defenderIt = mDefenders.begin();
@@ -346,28 +266,6 @@ PlayerObject::~PlayerObject()
 	// destroy known objects
 	destroyKnownObjects();
 
-	// remove us from cell / SI
-	if(mParentId)
-	{
-		if(CellObject* cell = dynamic_cast<CellObject*>(gWorldManager->getObjectById(mParentId)))
-		{
-			cell->removeObject(this);
-		}
-		else
-		{
-			gLogger->log(LogManager::DEBUG,"PlayerObject::destructor: couldn't find cell %"PRIu64"",mParentId);
-		}
-	}
-	else if(mSubZoneId)
-	{
-		if(QTRegion* region = gWorldManager->getQTRegion(mSubZoneId))
-		{
-			mSubZoneId = 0;
-
-			region->mTree->removeObject(this);
-		}
-	}
-
 	clearAllUIWindows();
 
 	stopTutorial();
@@ -388,6 +286,9 @@ PlayerObject::~PlayerObject()
 
 	delete(mStomach);
 	delete(mTrade);
+	
+	delete getClient();
+	setClient(NULL);
 }
 
 //=============================================================================
@@ -1025,7 +926,7 @@ void PlayerObject::addBadge(uint32 badgeId)
 		Badge* badge = gCharSheetManager->getBadgeById(badgeId);
 
 		gMessageLib->sendPlayMusicMessage(badge->getSoundId(),this);
-		gMessageLib->sendSystemMessage(this,L"","badge_n","prose_grant","badge_n",badge->getName(),L"");
+    gMessageLib->sendSystemMessage(this,L"","badge_n","prose_grant","badge_n",badge->getName().getAnsi(),L"");
 
 		(gWorldManager->getDatabase())->ExecuteSqlAsync(0,0,"INSERT INTO character_badges VALUES (%"PRIu64",%u)",mId,badgeId);
 
@@ -1491,7 +1392,7 @@ void PlayerObject::handleUIEvent(uint32 action,int32 element,string inputStr,UIW
 			string convName = teachBox->getPupil()->getFirstName().getAnsi();
 			convName.convert(BSTRType_Unicode16);
 
-			gMessageLib->sendSystemMessage(this,L"","teaching","teacher_skill_learned","skl_n",teachBox->getSkill()->mName,L"",0,"","",convName);
+      gMessageLib->sendSystemMessage(this,L"","teaching","teacher_skill_learned","skl_n",teachBox->getSkill()->mName.getAnsi(),L"",0,"","",convName.getUnicode16());
 
 			//add skill to our pupils repertoir and send mission accomplished to our pupil
 			gSkillManager->learnSkill(teachBox->getSkill()->mId,teachBox->getPupil(),true);
@@ -2005,6 +1906,9 @@ Object* PlayerObject::getHealingTarget(PlayerObject* Player) const
 
 	if (PlayerTarget && PlayerTarget->getId() != Player->getId())
 	{
+		//check duel
+		if (Player->checkDuelList(PlayerTarget))
+			return Player;
 		//check pvp status
 		if(Player->getPvPStatus() != PlayerTarget->getPvPStatus())
 		{
@@ -2078,7 +1982,7 @@ bool PlayerObject::useLots(uint8 usedLots)
 //
 bool PlayerObject::regainLots(uint8 lots)
 {
-	uint8 maxLots = gWorldConfig->getConfiguration("Player_Max_Lots",(uint8)10);
+	uint32 maxLots = gWorldConfig->getConfiguration<uint32>("Player_Max_Lots",(uint32)10);
 
 	if((mLots + lots) > maxLots)
 	{

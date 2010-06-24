@@ -365,21 +365,39 @@ bool ObjectController::_processCommandQueue()
 				{
 					case ObjControllerCmdGroup_Common:
 					{
-						// get the command
-						CommandMap::iterator it = gObjControllerCmdMap.find(command);
+						// Check the new style of handlers first.
+            CommandMap::const_iterator it = gObjectControllerCommands->getCommandMap().find(command);
+            
+            // Find the target object (if one is given) and pass it in.
+            Object* target = NULL;
+            
+            if (targetId) {
+              target = gWorldManager->getObjectById(targetId);
+            }
 
-						if (message && it != gObjControllerCmdMap.end())
-						{
-							(this->*((*it).second))(targetId,message,cmdProperties);
+            // If a new style handler is found process it.
+            if (message && it != gObjectControllerCommands->getCommandMap().end()) {
+
+              ((*it).second)(mObject, target, message, cmdProperties);
 							consumeHam = mHandlerCompleted;
-						}
-						else
-						{
-							gLogger->log(LogManager::DEBUG,"ObjectController::processCommandQueue: ObjControllerCmdGroup_Common Unhandled Cmd 0x%x for %"PRIu64"",command,mObject->getId());
-							//gLogger->hexDump(message->getData(),message->getSize());
+            } else {
+              // Otherwise, process the old style handler.
+						  OriginalCommandMap::iterator it = gObjControllerCmdMap.find(command);
 
-							consumeHam = false;
-						}
+						  if (message && it != gObjControllerCmdMap.end())
+						  {
+                ((*it).second)(this, targetId, message, cmdProperties);
+						  	//(this->*((*it).second))(targetId,message,cmdProperties);
+						  	consumeHam = mHandlerCompleted;
+						  }
+						  else
+						  {
+						  	gLogger->log(LogManager::DEBUG,"ObjectController::processCommandQueue: ObjControllerCmdGroup_Common Unhandled Cmd 0x%x for %"PRIu64"",command,mObject->getId());
+						  	//gLogger->hexDump(message->getData(),message->getSize());
+
+						  	consumeHam = false;
+						  }
+            }
 					}
 					break;
 
@@ -479,7 +497,6 @@ bool ObjectController::_processCommandQueue()
 			// Be aware, internally created messages are NULL (auto-attack)
 			if (message)
 			{
-				message->mSourceId = 99;
 				message->setPendingDelete(true);
 			}
 			// Remove the command from queue. Note: pop() invokes object destructor.
@@ -580,7 +597,6 @@ void ObjectController::enqueueCommandMessage(Message* message)
 
 		Message* newMessage = gMessageFactory->EndMessage();
 		newMessage->setIndex(message->getIndex());
-		newMessage->mSourceId = 80;
 
 		// create the queued message, need setters since boost pool constructor templates take 3 params max
 
@@ -833,7 +849,7 @@ bool ObjectController::_validateEnqueueCommand(uint32 &reply1,uint32 &reply2,uin
 			{
 				gMessageLib->sendCraftAcknowledge(opCraftCancelResponse,0,0,player);
 			}
-			gMessageLib->sendSystemMessage(player,L"error_message", "wrong_state");
+			gMessageLib->sendSystemMessage(player,L"", "error_message", "wrong_state");
 			return(false);
 		}
 
@@ -862,7 +878,7 @@ bool ObjectController::_validateProcessCommand(uint32 &reply1,uint32 &reply2,uin
 			{
 				gMessageLib->sendCraftAcknowledge(opCraftCancelResponse,0,0,player);
 			}
-			gMessageLib->sendSystemMessage(player,L"error_message", "wrong_state");
+			gMessageLib->sendSystemMessage(player, L"", "error_message", "wrong_state");
 			return(false);
 		}
 

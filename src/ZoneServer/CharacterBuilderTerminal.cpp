@@ -87,6 +87,7 @@ void CharacterBuilderTerminal::InitMenus()
 	mMainMenu.push_back("Manage Buffs");
 	mMainMenu.push_back("Manage Items");
 	mMainMenu.push_back("Manage Resources");
+	mMainMenu.push_back("Manage Professions");
 	
 	mMainCsrMenu.push_back("Manage Experience");
 	mMainCsrMenu.push_back("Manage Credits");
@@ -195,6 +196,7 @@ void CharacterBuilderTerminal::InitStructures()
 	mStructureMenu.push_back("Harvesters");
 	mStructureMenu.push_back("Camps");
 	mStructureMenu.push_back("Houses");
+	mStructureMenu.push_back("Civic");
 
 	//BStringVector			mFactoryMenu;
 	mFactoryMenu.push_back("Wearables Factory");
@@ -216,6 +218,20 @@ void CharacterBuilderTerminal::InitStructures()
 	mCampMenu.push_back("HiTech Field Base Camp");
 	mCampMenu.push_back("Multiperson Camp");
 	mCampMenu.push_back("High Quality Camp");
+
+	mCivicMenu.push_back("Guild Halls");
+	mCivicMenu.push_back("City Halls");
+
+	//Guild Halls
+	mGuildHallMenu.push_back("Corellia Guild Hall");
+	mGuildHallMenu.push_back("Generic Guild Hall");
+	mGuildHallMenu.push_back("Naboo Guild Hall");
+	mGuildHallMenu.push_back("Tatooine Guild Hall");
+	
+	//City Halls
+	mCityHallMenu.push_back("Corellian City Hall");
+	mCityHallMenu.push_back("Nabooian City Hall");
+	mCityHallMenu.push_back("Tatooine City Hall");
 
 	//BStringVector			mHouseMenu;
 	mHouseMenu.push_back("Generic Houses");
@@ -242,8 +258,8 @@ void CharacterBuilderTerminal::InitStructures()
 	mWaterMenu.push_back("Medium");
 	
 	//BStringVector			mMineralMenu;
-	mMineralMenu.push_back("Small");
 	mMineralMenu.push_back("Heavy");
+	mMineralMenu.push_back("Small");
 	mMineralMenu.push_back("Medium");
 	
 
@@ -650,7 +666,8 @@ void CharacterBuilderTerminal::SendResourcesMenu(PlayerObject* playerObject, uin
 
 void CharacterBuilderTerminal::_handleMainMenu(PlayerObject* playerObject, uint32 action,int32 element,string inputStr,UIWindow* window)
 {
-	if(element >= (int)mMainMenu.size())
+  // Check if the player is a csr and handle the menu appropriately.
+  if (playerObject->getCsrTag())
 		return _handleMainCsrMenu(playerObject, action, element, inputStr, window);
 
 	switch(element)
@@ -678,6 +695,12 @@ void CharacterBuilderTerminal::_handleMainMenu(PlayerObject* playerObject, uint3
 		break;
 	case 4://Resources
 		SendResourcesMenu(playerObject, action, element, inputStr, window);
+		break;
+	case 5: //Professions
+		if(playerObject->isConnected())
+		{
+			gUIManager->createNewListBox(this,"handleGetProf","Select Profession to Master","Select from the list below.",mProfessionMenu,playerObject,SUI_Window_CharacterBuilderProfessionMastery_ListBox);
+		}
 		break;
 	default:
 		break;
@@ -1289,22 +1312,22 @@ void CharacterBuilderTerminal::_handleWoundMenu(PlayerObject* playerObject, uint
 		playerObject->getHam()->updateBattleFatigue(100);
 		break;
 	case 10: //Health Wound
-		playerObject->getHam()->updatePropertyValue(HamBar_Health, HamProperty_Wounds, 100);
+		playerObject->getHam()->updatePropertyValue(HamBar_Health, HamProperty_Wounds, -100);
 		break;
 	case 11: //Strength Wound
-		playerObject->getHam()->updatePropertyValue(HamBar_Strength, HamProperty_Wounds, 100);
+		playerObject->getHam()->updatePropertyValue(HamBar_Strength, HamProperty_Wounds, -100);
 		break;
 	case 12: //Constitution Wound
-		playerObject->getHam()->updatePropertyValue(HamBar_Constitution, HamProperty_Wounds, 100);
+		playerObject->getHam()->updatePropertyValue(HamBar_Constitution, HamProperty_Wounds, -100);
 		break;
 	case 13: //Action Wound
-		playerObject->getHam()->updatePropertyValue(HamBar_Action, HamProperty_Wounds, 100);
+		playerObject->getHam()->updatePropertyValue(HamBar_Action, HamProperty_Wounds, -100);
 		break;
 	case 14: //Stamina Wound
-		playerObject->getHam()->updatePropertyValue(HamBar_Stamina, HamProperty_Wounds, 100);
+		playerObject->getHam()->updatePropertyValue(HamBar_Stamina, HamProperty_Wounds, -100);
 		break;
 	case 15: //Quickness Wound
-		playerObject->getHam()->updatePropertyValue(HamBar_Quickness, HamProperty_Wounds, 100);
+		playerObject->getHam()->updatePropertyValue(HamBar_Quickness, HamProperty_Wounds, -100);
 		break;
 	case 16: //Mind Wound
 		playerObject->getHam()->updatePropertyValue(HamBar_Mind, HamProperty_Wounds, -100);
@@ -1351,6 +1374,11 @@ void CharacterBuilderTerminal::_handleStructureMenu(PlayerObject* playerObject, 
 			gUIManager->createNewListBox(this,"handleHouseMenu","House","Select a category.",mHouseMenu,playerObject,SUI_Window_CharacterBuilder_ListBox_HouseMenu);
 		}
 		break;
+	case 4:
+		if(playerObject->isConnected())
+		{
+			gUIManager->createNewListBox(this, "handleCivicMenu", "Civic", "Select a category.", mCivicMenu, playerObject, SUI_Window_CharacterBuilder_ListBox_CivicMenu);
+		}
 	default:break;
 	}
 }
@@ -2521,6 +2549,15 @@ void  CharacterBuilderTerminal::handleUIEvent(uint32 action,int32 element,string
 		case SUI_Window_CharacterBuilder_ListBox_WoundMenu:
 			_handleWoundMenu(playerObject, action, element, inputStr, window);
 			break;
+		case SUI_Window_CharacterBuilder_ListBox_CivicMenu:
+			_handleCivicMenu(playerObject, action, element, inputStr, window);
+			break;
+		case SUI_Window_CharacterBuilder_ListBox_GuildHallMenu:
+			_handleGuildMenu(playerObject, action, element, inputStr, window);
+			break;
+		case SUI_Window_CharacterBuilder_ListBox_CityHallMenu:
+			_handleCityMenu(playerObject, action, element, inputStr, window);
+			break;
 		default:
 			break;
 	}
@@ -2529,3 +2566,56 @@ void  CharacterBuilderTerminal::handleUIEvent(uint32 action,int32 element,string
 //=============================================================================
 
 
+void CharacterBuilderTerminal::_handleCivicMenu(PlayerObject* player, uint32 action, int32 element, string inputStr, UIWindow* window)
+{
+	switch(element)
+	{
+	case 0:
+		gUIManager->createNewListBox(this,"handleGuildHalls","Guild Halls","Select a category.", mGuildHallMenu,player,SUI_Window_CharacterBuilder_ListBox_GuildHallMenu);
+		break;
+	case 1:
+		gUIManager->createNewListBox(this,"handleCityHalls","City Halls","Select a category.", mCityHallMenu,player,SUI_Window_CharacterBuilder_ListBox_CityHallMenu);
+		break;
+	default:
+		break;
+	}
+}
+
+void CharacterBuilderTerminal::_handleGuildMenu(PlayerObject* player, uint32 action, int32 element, string inputStr, UIWindow* window)
+{
+	switch(element)
+	{
+	case 0:
+		GiveItem(player,1597);
+		break;
+	case 1:
+		GiveItem(player,1598);
+		break;
+	case 2:
+		GiveItem(player,1599);
+		break;
+	case 3:
+		GiveItem(player,1600);
+		break;
+	default:
+		break;
+	}	
+}
+
+void CharacterBuilderTerminal::_handleCityMenu(PlayerObject* player, uint32 action, int32 element, string inputStr, UIWindow* window)
+{
+	switch(element)
+	{
+	case 0:
+		GiveItem(player,1566);
+		break;
+	case 1:
+		GiveItem(player,1567);
+		break;
+	case 2:
+		GiveItem(player,1568);
+		break;
+	default:
+		break;
+	}
+}
