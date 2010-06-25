@@ -259,7 +259,8 @@ void NonPersistentNpcFactory::handleDatabaseJobComplete(void* ref,DatabaseResult
 			npc->mHam.calcAllModifiedHitPoints();
 
 			// inventory
-			npcInventory->setId(npc->mId + 1);
+
+			npcInventory->setId(npc->mId + INVENTORY_OFFSET);
 			npcInventory->setParentId(npc->mId);
 			npcInventory->setModelString("object/tangible/inventory/shared_creature_inventory.iff");
 			
